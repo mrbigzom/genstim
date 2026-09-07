@@ -1,0 +1,184 @@
+import logging
+
+from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.types import CallbackQuery, ErrorEvent, Message
+from aiogram.types import User as TelegramUser
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.bot.keyboards.create import create_menu
+from app.bot.keyboards.language import language_menu
+from app.bot.keyboards.main import button_texts, main_menu
+from app.locales.messages import get_text
+from app.models.user import User
+from app.services.user import UserService
+
+logger = logging.getLogger(__name__)
+router = Router(name="common")
+
+PRIVACY_URL = "https://github.com/mrbigzom/genstim/blob/main/PRIVACY.md"
+TERMS_URL = "https://github.com/mrbigzom/genstim/blob/main/TERMS.md"
+
+
+async def ensure_user(telegram_user: TelegramUser, session: AsyncSession) -> User:
+    user, _ = await UserService(session).get_or_create(
+        telegram_id=telegram_user.id,
+        username=telegram_user.username,
+        first_name=telegram_user.first_name,
+        telegram_language=telegram_user.language_code,
+    )
+    return user
+
+
+def referral_from_start(command: CommandObject) -> str | None:
+    if command.args and command.args.startswith("ref_"):
+        return command.args.removeprefix("ref_") or None
+    return None
+
+
+@router.message(CommandStart())
+async def start(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user, created = await UserService(session).get_or_create(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        telegram_language=message.from_user.language_code,
+        referral_code=referral_from_start(command),
+    )
+    key = "welcome" if created else "welcome_back"
+    await message.answer(get_text(user.language, key), reply_markup=main_menu(user.language))
+
+
+@router.message(Command("help"))
+@router.message(F.text.in_(button_texts("help")))
+async def help_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "help"), reply_markup=main_menu(user.language))
+
+
+@router.message(Command("create"))
+@router.message(F.text.in_(button_texts("create")))
+async def create_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "create"), reply_markup=create_menu(user.language))
+
+
+@router.message(Command("tools"))
+@router.message(F.text.in_(button_texts("tools")))
+async def tools_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "tools"), reply_markup=create_menu(user.language))
+
+
+@router.callback_query(F.data.startswith("feature:"))
+async def feature_callback(callback: CallbackQuery, session: AsyncSession) -> None:
+    user = await ensure_user(callback.from_user, session)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(get_text(user.language, "feature_pending"))
+
+
+@router.message(Command("credits"))
+@router.message(F.text.in_(button_texts("credits")))
+async def credits_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "credits", credits=user.credits))
+
+
+@router.message(Command("history"))
+@router.message(F.text.in_(button_texts("history")))
+async def history_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "history"))
+
+
+@router.message(Command("invite"))
+@router.message(F.text.in_(button_texts("invite")))
+async def invite_command(message: Message, session: AsyncSession, bot: Bot) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    bot_user = await bot.get_me()
+    link = f"https://t.me/{bot_user.username}?start=ref_{user.referral_code}"
+    await message.answer(get_text(user.language, "invite", link=link))
+
+
+@router.message(Command("language"))
+@router.message(F.text.in_(button_texts("language")))
+async def language_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "language"), reply_markup=language_menu())
+
+
+@router.callback_query(F.data.in_({"language:en", "language:ru"}))
+async def language_callback(callback: CallbackQuery, session: AsyncSession) -> None:
+    language = callback.data.split(":", maxsplit=1)[1] if callback.data else "en"
+    user = await ensure_user(callback.from_user, session)
+    await UserService(session).set_language(user, language)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            get_text(language, "language_changed"),
+            reply_markup=main_menu(language),
+        )
+
+
+@router.message(Command("support"))
+async def support_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "support"))
+
+
+@router.message(Command("paysupport"))
+async def payment_support_command(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "paysupport"))
+
+
+@router.message(Command("terms"))
+async def terms_command(message: Message) -> None:
+    await message.answer(TERMS_URL)
+
+
+@router.message(Command("privacy"))
+async def privacy_command(message: Message) -> None:
+    await message.answer(PRIVACY_URL)
+
+
+@router.message()
+async def unknown_message(message: Message, session: AsyncSession) -> None:
+    if message.from_user is None:
+        return
+    user = await ensure_user(message.from_user, session)
+    await message.answer(get_text(user.language, "unknown"), reply_markup=main_menu(user.language))
+
+
+@router.error()
+async def error_handler(event: ErrorEvent) -> bool:
+    exception = event.exception
+    logger.error(
+        "Unhandled error while processing Telegram update",
+        exc_info=(type(exception), exception, exception.__traceback__),
+    )
+    message = event.update.message
+    if message is not None:
+        await message.answer(get_text("en", "error"))
+    return True
