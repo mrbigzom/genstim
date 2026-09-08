@@ -10,7 +10,14 @@ from app.bot.handlers.utils import ensure_user
 from app.bot.keyboards.create import create_menu
 from app.bot.keyboards.language import language_menu
 from app.bot.keyboards.main import button_texts, main_menu
-from app.bot.states import BackgroundRemovalStates
+from app.bot.states import (
+    BackgroundRemovalStates,
+    MemeStates,
+    PassportPhotoStates,
+    PixelAvatarStates,
+    QrCodeStates,
+    StickerStates,
+)
 from app.locales.messages import get_text
 from app.services.generation import GenerationService
 from app.services.user import UserService
@@ -201,6 +208,23 @@ async def unknown_message(
     user = await ensure_user(message.from_user, session)
     if await state.get_state() == BackgroundRemovalStates.waiting_for_image.state:
         await message.answer(get_text(user.language, "background_only_images"))
+        return
+    current_state = await state.get_state()
+    if current_state in {
+        PixelAvatarStates.waiting_for_image.state,
+        PassportPhotoStates.waiting_for_image.state,
+        StickerStates.waiting_for_image.state,
+    }:
+        await message.answer(get_text(user.language, "local_only_images"))
+        return
+    if current_state == QrCodeStates.waiting_for_payload.state:
+        await message.answer(get_text(user.language, "qr_only_text"))
+        return
+    if current_state in {
+        MemeStates.waiting_for_top_text.state,
+        MemeStates.waiting_for_bottom_text.state,
+    }:
+        await message.answer(get_text(user.language, "meme_only_text"))
         return
     await message.answer(get_text(user.language, "unknown"), reply_markup=main_menu(user.language))
 

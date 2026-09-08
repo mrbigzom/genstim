@@ -17,11 +17,13 @@ FEATURES = {
     "qr": {"en": "🔳 QR Designer", "ru": "🔳 QR-дизайнер"},
 }
 
+VISIBLE_FEATURES = ("stickers", "memes", "pixel", "passport", "background", "qr")
+
 
 def create_menu(language: str) -> InlineKeyboardMarkup:
     selected = language if language in {"en", "ru"} else "en"
     rows: list[list[InlineKeyboardButton]] = []
-    items = list(FEATURES.items())
+    items = [(feature, FEATURES[feature]) for feature in VISIBLE_FEATURES]
     for index in range(0, len(items), 2):
         rows.append(
             [

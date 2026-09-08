@@ -13,6 +13,11 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import create_database
 from app.providers.background_removal import RembgBackgroundRemovalProvider
+from app.providers.meme import PillowMemeProvider
+from app.providers.passport_photo import LocalPassportPhotoProvider
+from app.providers.pixel_avatar import PillowPixelAvatarProvider
+from app.providers.qr_code import PillowQrCodeProvider
+from app.providers.sticker import LocalStickerProvider
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +39,25 @@ async def run() -> None:
         max_pixels=settings.background_removal_max_pixels,
         max_concurrency=settings.background_removal_max_concurrency,
     )
+    local_timeout = settings.background_removal_timeout_seconds
     dispatcher = create_dispatcher(
         session_factory,
         background_removal_provider=background_removal_provider,
+        qr_code_provider=PillowQrCodeProvider(timeout_seconds=local_timeout),
+        meme_provider=PillowMemeProvider(timeout_seconds=local_timeout),
+        pixel_avatar_provider=PillowPixelAvatarProvider(
+            timeout_seconds=local_timeout,
+            max_pixels=settings.background_removal_max_pixels,
+        ),
+        passport_photo_provider=LocalPassportPhotoProvider(
+            background_removal_provider,
+            timeout_seconds=local_timeout,
+            max_pixels=settings.background_removal_max_pixels,
+        ),
+        sticker_provider=LocalStickerProvider(
+            background_removal_provider,
+            timeout_seconds=local_timeout,
+        ),
         background_max_file_size=settings.background_removal_max_file_mb * 1024 * 1024,
         background_max_pixels=settings.background_removal_max_pixels,
     )

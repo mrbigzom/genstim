@@ -8,7 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system genstim && adduser --system --ingroup genstim genstim
+RUN apt-get update && \
+    apt-get install --no-install-recommends --yes fonts-dejavu-core && \
+    rm -rf /var/lib/apt/lists/* && \
+    addgroup --system genstim && adduser --system --ingroup genstim genstim
 
 COPY pyproject.toml README.md ./
 COPY app ./app

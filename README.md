@@ -3,11 +3,10 @@
 GenStim AI is an international Telegram bot MVP built with Python 3.12, aiogram 3,
 FastAPI, PostgreSQL, SQLAlchemy 2, Alembic, and Docker Compose.
 
-The first release provides English and Russian menus, user accounts with three free
-credits, referral links, localized command handlers, placeholder creation tools, and
-an HTTP health endpoint. QR Designer creates decodable PNG files from text or URLs, and
-Background Removal uses the local `rembg` `u2netp` model to create transparent PNG files.
-Real paid AI providers and Telegram Stars payments are deliberately not connected yet.
+The current release provides English and Russian menus, user accounts with three free
+credits, referral links, localized command handlers, generation history, an HTTP health
+endpoint, and six local CPU-only creation tools. Paid AI APIs and Telegram Stars payments
+remain deliberately disabled.
 
 ## Quick start with Docker
 
@@ -22,7 +21,7 @@ Requirements: Docker Engine with Docker Compose and a Telegram bot token from
 
 2. Open `.env` locally and set `BOT_TOKEN`. Never paste the token into source files,
    commits, issues, or chat messages. The example `DATABASE_URL` is already configured
-   for the Compose network. Background removal does not require an API key.
+   for the Compose network. None of the creation tools requires an API key.
 
 3. Build and start the application:
 
@@ -113,6 +112,37 @@ image must not reduce the balance.
 Source images are downloaded to a per-request temporary directory and removed after
 success or failure. GenStim stores only generation metadata; it does not persist the input
 or output image.
+
+## Local CPU tools
+
+The `/create` menu exposes only implemented tools. Every successful operation costs one
+credit and creates a completed `/history` record. Failed operations do not spend a credit.
+
+- **Background Removal** — `rembg` with the local `u2netp` model; transparent PNG.
+- **QR Designer** — `python-qrcode`; local, scannable PNG from text or a URL (up to 1024
+  characters and 2048 UTF-8 bytes).
+- **Meme Generator** — Pillow and bundled local template definitions; PNG with English or
+  Russian top and bottom text.
+- **Pixel Avatar** — Pillow pixelation, palette reduction, and nearest-neighbor upscale;
+  three pixel sizes and a 512×512 PNG result.
+- **Passport / ID Photo** — local `rembg`, OpenCV face detection, and Pillow composition;
+  413×531 PNG on a white, light-gray, or light-blue background. This utility does not
+  guarantee official acceptance; users must verify the requirements for their document.
+- **Stickers** — local `rembg` and Pillow outline/composition; transparent 512×512 WebP no
+  larger than Telegram's 512 KiB static-sticker limit.
+
+AI Avatars, Pet AI, Couple & Family, Baby, Game Character, Roast Me, Photo Enhance, and
+Anime remain in the internal feature registry for future work but are hidden from users.
+
+Image tools accept JPEG, PNG, WebP, and HEIC files up to 20 MiB and 25 megapixels. Input
+files live only in per-request temporary directories, are removed after success or failure,
+and are never written to application logs. QR payloads and meme text are not logged.
+
+The direct libraries added for these tools use permissive licenses suitable for commercial
+applications: `qrcode` is BSD-3-Clause, OpenCV 4.5+ is Apache-2.0, Pillow is MIT-CMU, and
+the DejaVu font package permits use and redistribution as part of a larger software package.
+This is a technical compatibility review, not legal advice; preserve dependency license
+notices when distributing the application.
 
 ## Project structure
 
