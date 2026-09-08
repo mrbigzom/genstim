@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     log_level: str = "INFO"
+    background_removal_api_key: SecretStr = SecretStr("")
+    background_removal_timeout_seconds: float = 30.0
+    background_removal_max_retries: int = 2
+    background_removal_max_file_mb: int = 20
 
     @field_validator("bot_token")
     @classmethod
@@ -38,6 +42,27 @@ class Settings(BaseSettings):
     @classmethod
     def empty_admin_id_is_none(cls, value: Any) -> Any:
         return None if value == "" else value
+
+    @field_validator("background_removal_timeout_seconds")
+    @classmethod
+    def validate_background_timeout(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("BACKGROUND_REMOVAL_TIMEOUT_SECONDS must be positive")
+        return value
+
+    @field_validator("background_removal_max_retries")
+    @classmethod
+    def validate_background_retries(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("BACKGROUND_REMOVAL_MAX_RETRIES cannot be negative")
+        return value
+
+    @field_validator("background_removal_max_file_mb")
+    @classmethod
+    def validate_background_file_limit(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("BACKGROUND_REMOVAL_MAX_FILE_MB must be positive")
+        return value
 
 
 @lru_cache

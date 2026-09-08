@@ -48,7 +48,46 @@ TEXTS: dict[str, dict[str, str]] = {
         "background_ready": "Done — your transparent PNG is ready.",
         "background_cancelled": "Background Removal cancelled.",
         "credits": "Your balance: <b>{credits} credits</b> 💎",
-        "history": "You do not have any creations yet. Start with /create 🎨",
+        "history_empty": "You do not have any creations yet. Start with /create 🎨",
+        "history_header": "<b>Your recent creations</b>\n\n{items}",
+        "history_item": (
+            "{index}. {feature}\n✅ Completed · {credits} credit\n{date}"
+        ),
+        "feature_background_removal": "✂️ Background Removal",
+        "background_prompt": (
+            "Send a JPEG, PNG, WebP, or HEIC image (up to {max_mb} MB). "
+            "The result costs 1 credit, charged only after successful processing."
+        ),
+        "background_only_images": "Please send an image, not text or another file.",
+        "background_unsupported_format": (
+            "This image format is not supported. Please send a JPEG, PNG, WebP, or HEIC image."
+        ),
+        "background_too_large": "The image is too large. Maximum size: {max_mb} MB.",
+        "background_processing": (
+            "⏳ Removing the background… This usually takes a few seconds."
+        ),
+        "background_success": (
+            "✅ Background removed. Remaining balance: <b>{credits} credits</b>."
+        ),
+        "background_insufficient": (
+            "You do not have enough credits. Background Removal requires 1 credit."
+        ),
+        "background_timeout": (
+            "The image service took too long to respond. No credit was charged. "
+            "Please send the image again."
+        ),
+        "background_provider_error": (
+            "The image could not be processed right now. No credit was charged. "
+            "Please try again later."
+        ),
+        "background_image_rejected": (
+            "The service could not find a removable foreground in this image. "
+            "No credit was charged. Please try another image."
+        ),
+        "background_transfer_error": (
+            "I could not download or send the image. No credit was charged if processing "
+            "did not complete. Please try again."
+        ),
         "invite": (
             "Invite friends with your personal link:\n{link}\n\n"
             "Referral rewards will be available in a future update."
@@ -113,7 +152,46 @@ TEXTS: dict[str, dict[str, str]] = {
         "background_ready": "Готово — PNG с прозрачным фоном создан.",
         "background_cancelled": "Удаление фона отменено.",
         "credits": "Ваш баланс: <b>{credits} кредита</b> 💎",
-        "history": "У вас пока нет созданных работ. Начните с /create 🎨",
+        "history_empty": "У вас пока нет созданных работ. Начните с /create 🎨",
+        "history_header": "<b>Ваши последние работы</b>\n\n{items}",
+        "history_item": (
+            "{index}. {feature}\n✅ Готово · {credits} кредит\n{date}"
+        ),
+        "feature_background_removal": "✂️ Удаление фона",
+        "background_prompt": (
+            "Отправьте изображение JPEG, PNG, WebP или HEIC размером до {max_mb} МБ. "
+            "Стоимость — 1 кредит; он спишется только после успешной обработки."
+        ),
+        "background_only_images": "Отправьте изображение, а не текст или другой файл.",
+        "background_unsupported_format": (
+            "Этот формат не поддерживается. Отправьте изображение JPEG, PNG, WebP или HEIC."
+        ),
+        "background_too_large": "Изображение слишком большое. Максимум: {max_mb} МБ.",
+        "background_processing": (
+            "⏳ Удаляю фон… Обычно это занимает несколько секунд."
+        ),
+        "background_success": (
+            "✅ Фон удалён. Осталось: <b>{credits} кредитов</b>."
+        ),
+        "background_insufficient": (
+            "Недостаточно кредитов. Для удаления фона нужен 1 кредит."
+        ),
+        "background_timeout": (
+            "Сервис обработки не успел ответить. Кредит не списан. "
+            "Отправьте изображение ещё раз."
+        ),
+        "background_provider_error": (
+            "Сейчас не удалось обработать изображение. Кредит не списан. "
+            "Попробуйте позже."
+        ),
+        "background_image_rejected": (
+            "Сервис не смог найти на изображении объект для отделения от фона. "
+            "Кредит не списан. Попробуйте другое изображение."
+        ),
+        "background_transfer_error": (
+            "Не удалось скачать или отправить изображение. Если обработка не завершилась, "
+            "кредит не списан. Попробуйте ещё раз."
+        ),
         "invite": (
             "Приглашайте друзей по персональной ссылке:\n{link}\n\n"
             "Реферальные награды появятся в одном из следующих обновлений."

@@ -14,6 +14,7 @@ def test_settings_accept_empty_optional_admin_id() -> None:
 
     assert settings.admin_telegram_id is None
     assert settings.bot_token.get_secret_value() == "123456:test-token"
+    assert settings.background_removal_api_key.get_secret_value() == ""
     assert "test-token" not in repr(settings)
 
 

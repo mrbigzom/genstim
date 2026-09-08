@@ -2,6 +2,7 @@ import logging
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ErrorEvent, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +10,9 @@ from app.bot.handlers.utils import ensure_user
 from app.bot.keyboards.create import create_menu
 from app.bot.keyboards.language import language_menu
 from app.bot.keyboards.main import button_texts, main_menu
+from app.bot.states import BackgroundRemovalStates
 from app.locales.messages import get_text
+from app.services.generation import GenerationService
 from app.services.user import UserService
 
 logger = logging.getLogger(__name__)
@@ -26,7 +29,12 @@ def referral_from_start(command: CommandObject) -> str | None:
 
 
 @router.message(CommandStart())
-async def start(message: Message, command: CommandObject, session: AsyncSession) -> None:
+async def start(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
     if message.from_user is None:
         return
     user, created = await UserService(session).get_or_create(
@@ -36,6 +44,7 @@ async def start(message: Message, command: CommandObject, session: AsyncSession)
         telegram_language=message.from_user.language_code,
         referral_code=referral_from_start(command),
     )
+    await state.clear()
     key = "welcome" if created else "welcome_back"
     await message.answer(get_text(user.language, key), reply_markup=main_menu(user.language))
 
@@ -72,8 +81,13 @@ async def tools_command(message: Message, session: AsyncSession) -> None:
     & (F.data != "feature:qr")
     & (F.data != "feature:background")
 )
-async def feature_callback(callback: CallbackQuery, session: AsyncSession) -> None:
+async def feature_callback(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
     user = await ensure_user(callback.from_user, session)
+    await state.clear()
     await callback.answer()
     if callback.message:
         await callback.message.answer(get_text(user.language, "feature_pending"))
@@ -94,7 +108,27 @@ async def history_command(message: Message, session: AsyncSession) -> None:
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
-    await message.answer(get_text(user.language, "history"))
+    generations = await GenerationService(session).completed_history(user.id)
+    if not generations:
+        await message.answer(get_text(user.language, "history_empty"))
+        return
+
+    items = []
+    for index, generation in enumerate(generations, start=1):
+        completed_at = generation.completed_at or generation.created_at
+        items.append(
+            get_text(
+                user.language,
+                "history_item",
+                index=index,
+                feature=get_text(user.language, f"feature_{generation.feature}"),
+                credits=generation.credits_spent,
+                date=completed_at.strftime("%Y-%m-%d %H:%M UTC"),
+            )
+        )
+    await message.answer(
+        get_text(user.language, "history_header", items="\n\n".join(items))
+    )
 
 
 @router.message(Command("invite"))
@@ -157,10 +191,17 @@ async def privacy_command(message: Message) -> None:
 
 
 @router.message()
-async def unknown_message(message: Message, session: AsyncSession) -> None:
+async def unknown_message(
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
+    if await state.get_state() == BackgroundRemovalStates.waiting_for_image.state:
+        await message.answer(get_text(user.language, "background_only_images"))
+        return
     await message.answer(get_text(user.language, "unknown"), reply_markup=main_menu(user.language))
 
 

@@ -20,9 +20,9 @@ Requirements: Docker Engine with Docker Compose and a Telegram bot token from
    Copy-Item .env.example .env
    ```
 
-2. Open `.env` locally and set `BOT_TOKEN`. Never paste the token into source files,
-   commits, issues, or chat messages. The example `DATABASE_URL` is already configured
-   for the Compose network.
+2. Open `.env` locally and set `BOT_TOKEN` and `BACKGROUND_REMOVAL_API_KEY`. Never paste
+   either token into source files, commits, issues, or chat messages. The example
+   `DATABASE_URL` is already configured for the Compose network.
 
 3. Build and start the application:
 
@@ -89,6 +89,41 @@ alembic upgrade head
 Telegram language is detected on first use: Russian Telegram clients start in Russian;
 all others default to English. Users can switch manually with `/language`.
 
+## Background Removal
+
+The `✂️ Background Removal` menu item uses Photoroom's dedicated Remove Background API.
+The provider is isolated behind `BackgroundRemovalProvider`, so it can be replaced without
+changing Telegram handlers. Photoroom's Basic endpoint currently costs $0.02 per processed
+image and includes 10 free production calls for a new account.
+
+To enable it:
+
+1. Create a Photoroom API account at
+   [photoroom.com/api](https://www.photoroom.com/api/remove-background) and enable a Basic
+   Remove Background API key.
+2. Put only the key value in your local `.env`:
+
+   ```dotenv
+   BACKGROUND_REMOVAL_API_KEY=your_photoroom_api_key_here
+   ```
+
+3. Rebuild/restart the app so it receives the environment change:
+
+   ```powershell
+   docker compose up -d --build
+   ```
+
+4. In Telegram, open `/create`, choose `✂️ Background Removal`, and send a JPEG, PNG,
+   WebP, or HEIC image no larger than 20 MiB. The bot replies with a transparent PNG.
+   Compare `/credits` before and after, then check `/history`: exactly one credit should
+   be charged and one completed entry shown. An unsupported file, provider error, or
+   timeout must not reduce the balance.
+
+Source images are downloaded to a per-request temporary directory and removed after
+success or failure. GenStim stores only generation metadata; it does not persist the input
+or output image. Photoroom states that images processed through its API are not saved by
+Photoroom.
+
 ## Project structure
 
 ```text
@@ -99,15 +134,16 @@ app/
   db/              SQLAlchemy base and async session factory
   locales/         English and Russian messages
   models/          database models
+  providers/       replaceable external AI provider adapters
   repositories/    persistence operations
   services/        application rules
 migrations/        Alembic environment and revisions
 tests/             service, configuration, and API tests
 ```
 
-The repository keeps transport, business rules, and persistence separate so future AI
-generation, photo processing, sticker packs, Telegram Stars, background jobs, generation
-history, referral rewards, and an admin panel can be added without changing the MVP core.
+The repository keeps transport, provider adapters, business rules, and persistence
+separate so future AI generation, sticker packs, Telegram Stars, background jobs, referral
+rewards, and an admin panel can be added without changing the MVP core.
 
 ## Configuration and secrets
 
@@ -117,10 +153,14 @@ Required variables are documented in `.env.example`:
 - `DATABASE_URL`
 - `ADMIN_TELEGRAM_ID`
 - `ENVIRONMENT`
+- `BACKGROUND_REMOVAL_API_KEY` (Photoroom Basic API key)
+- `BACKGROUND_REMOVAL_TIMEOUT_SECONDS` (default: `30`)
+- `BACKGROUND_REMOVAL_MAX_RETRIES` (default: `2`)
+- `BACKGROUND_REMOVAL_MAX_FILE_MB` (default: `20`)
 
 `.env` is excluded by both `.gitignore` and `.dockerignore`. Configuration loads the bot
-token as a Pydantic `SecretStr`, and the application never logs it. Do not commit a real
-token or any other credential.
+token and provider key as Pydantic `SecretStr` values, and the application never logs
+them. Do not commit a real token or any other credential.
 
 ## Legal documents
 
