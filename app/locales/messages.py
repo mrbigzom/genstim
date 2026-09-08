@@ -37,6 +37,16 @@ TEXTS: dict[str, dict[str, str]] = {
         "qr_generation_failed": "The QR image could not be generated. Please try again.",
         "qr_ready": "Your QR code is ready. The PNG is sent without recompression.",
         "qr_cancelled": "QR Designer cancelled.",
+        "background_send_image": (
+            "Send a JPEG or PNG image. Maximum file size: 10 MB; "
+            "maximum resolution: 25 megapixels."
+        ),
+        "background_invalid_image": "Send a valid JPEG or PNG image.",
+        "background_too_large": "That image is too large. Use a file under 10 MB and 25 MP.",
+        "background_processing": "Removing the background locally…",
+        "background_failed": "The background could not be removed. Try another image.",
+        "background_ready": "Done — your transparent PNG is ready.",
+        "background_cancelled": "Background Removal cancelled.",
         "credits": "Your balance: <b>{credits} credits</b> 💎",
         "history": "You do not have any creations yet. Start with /create 🎨",
         "invite": (
@@ -90,6 +100,18 @@ TEXTS: dict[str, dict[str, str]] = {
         "qr_generation_failed": "Не удалось создать QR-код. Попробуйте ещё раз.",
         "qr_ready": "QR-код готов. PNG отправлен без сжатия.",
         "qr_cancelled": "Создание QR-кода отменено.",
+        "background_send_image": (
+            "Отправьте изображение JPEG или PNG. Максимальный размер файла — 10 МБ, "
+            "разрешение — 25 мегапикселей."
+        ),
+        "background_invalid_image": "Отправьте корректное изображение JPEG или PNG.",
+        "background_too_large": (
+            "Изображение слишком большое. Используйте файл до 10 МБ и 25 Мп."
+        ),
+        "background_processing": "Удаляю фон локально…",
+        "background_failed": "Не удалось удалить фон. Попробуйте другое изображение.",
+        "background_ready": "Готово — PNG с прозрачным фоном создан.",
+        "background_cancelled": "Удаление фона отменено.",
         "credits": "Ваш баланс: <b>{credits} кредита</b> 💎",
         "history": "У вас пока нет созданных работ. Начните с /create 🎨",
         "invite": (

@@ -67,7 +67,11 @@ async def tools_command(message: Message, session: AsyncSession) -> None:
     await message.answer(get_text(user.language, "tools"), reply_markup=create_menu(user.language))
 
 
-@router.callback_query(F.data.startswith("feature:") & (F.data != "feature:qr"))
+@router.callback_query(
+    F.data.startswith("feature:")
+    & (F.data != "feature:qr")
+    & (F.data != "feature:background")
+)
 async def feature_callback(callback: CallbackQuery, session: AsyncSession) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()

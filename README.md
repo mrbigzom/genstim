@@ -5,9 +5,9 @@ FastAPI, PostgreSQL, SQLAlchemy 2, Alembic, and Docker Compose.
 
 The first release provides English and Russian menus, user accounts with three free
 credits, referral links, localized command handlers, placeholder creation tools, and
-an HTTP health endpoint. QR Designer works locally and creates decodable PNG files from
-text or URLs in several sizes and safe visual styles. Real AI providers and Telegram Stars
-payments are deliberately not connected yet.
+an HTTP health endpoint. QR Designer creates decodable PNG files from text or URLs, and
+Background Removal uses the local `rembg` `u2netp` model to create transparent PNG files.
+Real paid AI providers and Telegram Stars payments are deliberately not connected yet.
 
 ## Quick start with Docker
 
