@@ -3,14 +3,13 @@ import logging
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import CallbackQuery, ErrorEvent, Message
-from aiogram.types import User as TelegramUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.handlers.utils import ensure_user
 from app.bot.keyboards.create import create_menu
 from app.bot.keyboards.language import language_menu
 from app.bot.keyboards.main import button_texts, main_menu
 from app.locales.messages import get_text
-from app.models.user import User
 from app.services.user import UserService
 
 logger = logging.getLogger(__name__)
@@ -18,16 +17,6 @@ router = Router(name="common")
 
 PRIVACY_URL = "https://github.com/mrbigzom/genstim/blob/main/PRIVACY.md"
 TERMS_URL = "https://github.com/mrbigzom/genstim/blob/main/TERMS.md"
-
-
-async def ensure_user(telegram_user: TelegramUser, session: AsyncSession) -> User:
-    user, _ = await UserService(session).get_or_create(
-        telegram_id=telegram_user.id,
-        username=telegram_user.username,
-        first_name=telegram_user.first_name,
-        telegram_language=telegram_user.language_code,
-    )
-    return user
 
 
 def referral_from_start(command: CommandObject) -> str | None:
@@ -78,7 +67,7 @@ async def tools_command(message: Message, session: AsyncSession) -> None:
     await message.answer(get_text(user.language, "tools"), reply_markup=create_menu(user.language))
 
 
-@router.callback_query(F.data.startswith("feature:"))
+@router.callback_query(F.data.startswith("feature:") & (F.data != "feature:qr"))
 async def feature_callback(callback: CallbackQuery, session: AsyncSession) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()

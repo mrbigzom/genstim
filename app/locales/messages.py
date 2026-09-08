@@ -26,6 +26,17 @@ TEXTS: dict[str, dict[str, str]] = {
         "create": "Choose what you would like to create:",
         "tools": "Choose an AI tool:",
         "feature_pending": "This feature is being prepared 🚀",
+        "qr_enter_content": "Send the text or URL to encode in the QR code.",
+        "qr_invalid_content": (
+            "Send non-empty text or a URL up to 1,000 UTF-8 bytes. "
+            "Images and other attachments are not supported."
+        ),
+        "qr_choose_size": "Choose the output image size:",
+        "qr_choose_style": "Choose a QR style:",
+        "qr_invalid_option": "That QR option is not supported. Please choose from the menu.",
+        "qr_generation_failed": "The QR image could not be generated. Please try again.",
+        "qr_ready": "Your QR code is ready. The PNG is sent without recompression.",
+        "qr_cancelled": "QR Designer cancelled.",
         "credits": "Your balance: <b>{credits} credits</b> 💎",
         "history": "You do not have any creations yet. Start with /create 🎨",
         "invite": (
@@ -68,6 +79,17 @@ TEXTS: dict[str, dict[str, str]] = {
         "create": "Выберите, что хотите создать:",
         "tools": "Выберите AI-инструмент:",
         "feature_pending": "Эта функция готовится 🚀",
+        "qr_enter_content": "Отправьте текст или URL, который нужно записать в QR-код.",
+        "qr_invalid_content": (
+            "Отправьте непустой текст или URL размером до 1 000 байт UTF-8. "
+            "Изображения и другие вложения не поддерживаются."
+        ),
+        "qr_choose_size": "Выберите размер готового изображения:",
+        "qr_choose_style": "Выберите оформление QR-кода:",
+        "qr_invalid_option": "Этот вариант не поддерживается. Выберите пункт из меню.",
+        "qr_generation_failed": "Не удалось создать QR-код. Попробуйте ещё раз.",
+        "qr_ready": "QR-код готов. PNG отправлен без сжатия.",
+        "qr_cancelled": "Создание QR-кода отменено.",
         "credits": "Ваш баланс: <b>{credits} кредита</b> 💎",
         "history": "У вас пока нет созданных работ. Начните с /create 🎨",
         "invite": (
