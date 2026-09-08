@@ -12,7 +12,7 @@ from app.bot.dispatcher import create_dispatcher
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import create_database
-from app.providers.background_removal import PhotoroomBackgroundRemovalProvider
+from app.providers.background_removal import RembgBackgroundRemovalProvider
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +29,16 @@ async def run() -> None:
         token=settings.bot_token.get_secret_value(),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    background_removal_provider = PhotoroomBackgroundRemovalProvider(
-        api_key=settings.background_removal_api_key.get_secret_value(),
+    background_removal_provider = RembgBackgroundRemovalProvider(
         timeout_seconds=settings.background_removal_timeout_seconds,
-        max_retries=settings.background_removal_max_retries,
+        max_pixels=settings.background_removal_max_pixels,
+        max_concurrency=settings.background_removal_max_concurrency,
     )
     dispatcher = create_dispatcher(
         session_factory,
         background_removal_provider=background_removal_provider,
         background_max_file_size=settings.background_removal_max_file_mb * 1024 * 1024,
+        background_max_pixels=settings.background_removal_max_pixels,
     )
     server = uvicorn.Server(
         uvicorn.Config(

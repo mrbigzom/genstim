@@ -73,16 +73,20 @@ TEXTS: dict[str, dict[str, str]] = {
             "You do not have enough credits. Background Removal requires 1 credit."
         ),
         "background_timeout": (
-            "The image service took too long to respond. No credit was charged. "
+            "Local image processing took too long. No credit was charged. "
             "Please send the image again."
         ),
         "background_provider_error": (
             "The image could not be processed right now. No credit was charged. "
             "Please try again later."
         ),
-        "background_image_rejected": (
-            "The service could not find a removable foreground in this image. "
-            "No credit was charged. Please try another image."
+        "background_corrupted_image": (
+            "The image is damaged or cannot be decoded. No credit was charged. "
+            "Please send another image."
+        ),
+        "background_dimensions_too_large": (
+            "The image dimensions are too large. Maximum: {max_megapixels} megapixels. "
+            "No credit was charged."
         ),
         "background_transfer_error": (
             "I could not download or send the image. No credit was charged if processing "
@@ -177,16 +181,20 @@ TEXTS: dict[str, dict[str, str]] = {
             "Недостаточно кредитов. Для удаления фона нужен 1 кредит."
         ),
         "background_timeout": (
-            "Сервис обработки не успел ответить. Кредит не списан. "
+            "Локальная обработка заняла слишком много времени. Кредит не списан. "
             "Отправьте изображение ещё раз."
         ),
         "background_provider_error": (
             "Сейчас не удалось обработать изображение. Кредит не списан. "
             "Попробуйте позже."
         ),
-        "background_image_rejected": (
-            "Сервис не смог найти на изображении объект для отделения от фона. "
-            "Кредит не списан. Попробуйте другое изображение."
+        "background_corrupted_image": (
+            "Изображение повреждено или не читается. Кредит не списан. "
+            "Отправьте другое изображение."
+        ),
+        "background_dimensions_too_large": (
+            "Слишком большое разрешение изображения. Максимум: {max_megapixels} Мп. "
+            "Кредит не списан."
         ),
         "background_transfer_error": (
             "Не удалось скачать или отправить изображение. Если обработка не завершилась, "

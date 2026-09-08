@@ -1,23 +1,29 @@
 import asyncio
-import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
+from io import BytesIO
 from pathlib import Path
 from typing import Protocol
 
-import httpx
+from PIL import Image, UnidentifiedImageError
+from PIL.Image import DecompressionBombError
+from pillow_heif import register_heif_opener
+from rembg import new_session, remove
 
-logger = logging.getLogger(__name__)
+register_heif_opener()
 
-PHOTOROOM_ENDPOINT = "https://sdk.photoroom.com/v1/segment"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-TRANSIENT_STATUS_CODES = {408, 425, 429}
-CONTENT_TYPE_EXTENSIONS = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-    "image/heic": ".heic",
-    "image/heif": ".heic",
+SUPPORTED_CONTENT_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
 }
+SUPPORTED_PIL_FORMATS = {"JPEG", "PNG", "WEBP", "HEIF"}
+REMBG_MODEL_NAME = "u2netp"
+
+RemoveFunction = Callable[..., bytes]
+SessionFactory = Callable[[str], object]
 
 
 class BackgroundRemovalProvider(Protocol):
@@ -35,98 +41,115 @@ class BackgroundRemovalTimeoutError(BackgroundRemovalProviderError):
         super().__init__("provider_timeout")
 
 
-class PhotoroomBackgroundRemovalProvider:
+class _InvalidImageError(Exception):
+    pass
+
+
+class _ImageDimensionsError(Exception):
+    pass
+
+
+class RembgBackgroundRemovalProvider:
     def __init__(
         self,
         *,
-        api_key: str,
         timeout_seconds: float = 30.0,
-        max_retries: int = 2,
-        client: httpx.AsyncClient | None = None,
-        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        max_pixels: int = 25_000_000,
+        max_concurrency: int = 1,
+        model_name: str = REMBG_MODEL_NAME,
+        remove_function: RemoveFunction = remove,
+        session_factory: SessionFactory = new_session,
     ) -> None:
-        self.api_key = api_key
         self.timeout_seconds = timeout_seconds
-        self.max_retries = max_retries
-        self.client = client
-        self.sleep = sleep
+        self.max_pixels = max_pixels
+        self.model_name = model_name
+        self.remove_function = remove_function
+        self.session_factory = session_factory
+        self._session: object | None = None
+        self._session_lock = asyncio.Lock()
+        self._inference_slots = asyncio.Semaphore(max_concurrency)
 
     async def remove_background(self, image_path: Path, content_type: str) -> bytes:
-        if not self.api_key:
-            raise BackgroundRemovalProviderError("provider_not_configured")
+        if content_type not in SUPPORTED_CONTENT_TYPES:
+            raise BackgroundRemovalProviderError("unsupported_format")
 
-        image_bytes = await asyncio.to_thread(image_path.read_bytes)
-        if self.client is not None:
-            return await self._request_with_retries(self.client, image_bytes, content_type)
+        try:
+            image_bytes = await asyncio.to_thread(
+                _read_and_validate_image,
+                image_path,
+                self.max_pixels,
+            )
+        except _ImageDimensionsError as exc:
+            raise BackgroundRemovalProviderError("image_too_large") from exc
+        except _InvalidImageError as exc:
+            raise BackgroundRemovalProviderError("invalid_image") from exc
 
-        async with httpx.AsyncClient() as client:
-            return await self._request_with_retries(client, image_bytes, content_type)
-
-    async def _request_with_retries(
-        self,
-        client: httpx.AsyncClient,
-        image_bytes: bytes,
-        content_type: str,
-    ) -> bytes:
-        for attempt in range(self.max_retries + 1):
-            try:
-                response = await client.post(
-                    PHOTOROOM_ENDPOINT,
-                    headers={"x-api-key": self.api_key, "accept": "image/png"},
-                    files={
-                        "image_file": (
-                            f"upload{CONTENT_TYPE_EXTENSIONS.get(content_type, '')}",
-                            image_bytes,
-                            content_type,
-                        )
-                    },
-                    data={"format": "png", "channels": "rgba"},
+        session = await self._get_session()
+        try:
+            async with self._inference_slots:
+                output = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.remove_function,
+                        image_bytes,
+                        session=session,
+                        force_return_bytes=True,
+                    ),
                     timeout=self.timeout_seconds,
                 )
-            except httpx.TimeoutException as exc:
-                if attempt < self.max_retries:
-                    await self._retry_delay(attempt, "timeout")
-                    continue
+        except TimeoutError as exc:
+            raise BackgroundRemovalTimeoutError() from exc
+        except Exception as exc:
+            raise BackgroundRemovalProviderError("processing_error") from exc
+
+        if not isinstance(output, bytes) or not _is_transparent_png(output):
+            raise BackgroundRemovalProviderError("processing_error")
+        return output
+
+    async def _get_session(self) -> object:
+        if self._session is not None:
+            return self._session
+
+        async with self._session_lock:
+            if self._session is not None:
+                return self._session
+            try:
+                session = await asyncio.wait_for(
+                    asyncio.to_thread(self.session_factory, self.model_name),
+                    timeout=self.timeout_seconds,
+                )
+            except TimeoutError as exc:
                 raise BackgroundRemovalTimeoutError() from exc
-            except httpx.TransportError as exc:
-                if attempt < self.max_retries:
-                    await self._retry_delay(attempt, "transport_error")
-                    continue
-                raise BackgroundRemovalProviderError("provider_unavailable") from exc
+            except Exception as exc:
+                raise BackgroundRemovalProviderError("processing_error") from exc
+            if session is None:
+                raise BackgroundRemovalProviderError("processing_error")
+            self._session = session
+        return self._session
 
-            if response.status_code == 200:
-                if not response.content.startswith(PNG_SIGNATURE):
-                    raise BackgroundRemovalProviderError("provider_invalid_response")
-                return response.content
 
-            if self._is_temporary(response.status_code) and attempt < self.max_retries:
-                await self._retry_delay(attempt, f"http_{response.status_code}")
-                continue
+def _read_and_validate_image(image_path: Path, max_pixels: int) -> bytes:
+    image_bytes = image_path.read_bytes()
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            if image.format not in SUPPORTED_PIL_FORMATS:
+                raise _InvalidImageError
+            if image.width * image.height > max_pixels:
+                raise _ImageDimensionsError
+            image.verify()
+    except DecompressionBombError as exc:
+        raise _ImageDimensionsError from exc
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+        raise _InvalidImageError from exc
+    return image_bytes
 
-            raise BackgroundRemovalProviderError(self._error_code(response.status_code))
 
-        raise BackgroundRemovalProviderError("provider_unavailable")  # pragma: no cover
-
-    async def _retry_delay(self, attempt: int, reason: str) -> None:
-        logger.warning(
-            "Temporary background removal provider failure; retrying attempt=%d reason=%s",
-            attempt + 1,
-            reason,
-        )
-        await self.sleep(0.5 * (2**attempt))
-
-    @staticmethod
-    def _is_temporary(status_code: int) -> bool:
-        return status_code in TRANSIENT_STATUS_CODES or status_code >= 500
-
-    @staticmethod
-    def _error_code(status_code: int) -> str:
-        if status_code in {401, 403}:
-            return "provider_auth_error"
-        if status_code == 429:
-            return "provider_rate_limited"
-        if status_code in {400, 413, 415, 422}:
-            return "provider_rejected_image"
-        if status_code >= 500:
-            return "provider_unavailable"
-        return "provider_error"
+def _is_transparent_png(image_bytes: bytes) -> bool:
+    if not image_bytes.startswith(PNG_SIGNATURE):
+        return False
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            has_alpha_channel = image.format == "PNG" and "A" in image.getbands()
+            image.verify()
+            return has_alpha_channel
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
+        return False

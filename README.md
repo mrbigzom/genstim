@@ -20,9 +20,9 @@ Requirements: Docker Engine with Docker Compose and a Telegram bot token from
    Copy-Item .env.example .env
    ```
 
-2. Open `.env` locally and set `BOT_TOKEN` and `BACKGROUND_REMOVAL_API_KEY`. Never paste
-   either token into source files, commits, issues, or chat messages. The example
-   `DATABASE_URL` is already configured for the Compose network.
+2. Open `.env` locally and set `BOT_TOKEN`. Never paste the token into source files,
+   commits, issues, or chat messages. The example `DATABASE_URL` is already configured
+   for the Compose network. Background removal does not require an API key.
 
 3. Build and start the application:
 
@@ -91,38 +91,28 @@ all others default to English. Users can switch manually with `/language`.
 
 ## Background Removal
 
-The `✂️ Background Removal` menu item uses Photoroom's dedicated Remove Background API.
-The provider is isolated behind `BackgroundRemovalProvider`, so it can be replaced without
-changing Telegram handlers. Photoroom's Basic endpoint currently costs $0.02 per processed
-image and includes 10 free production calls for a new account.
+The `✂️ Background Removal` menu item uses `rembg[cpu]` with the lightweight local
+`u2netp` model. Inference runs inside the GenStim backend: user images are not sent to a
+background-removal API, and no provider account or API key is required. The provider is
+still isolated behind `BackgroundRemovalProvider`, so Telegram handlers remain independent
+from the implementation.
 
-To enable it:
+The Docker build downloads the `u2netp` model into the image. After building, background
+removal can run without provider network access:
 
-1. Create a Photoroom API account at
-   [photoroom.com/api](https://www.photoroom.com/api/remove-background) and enable a Basic
-   Remove Background API key.
-2. Put only the key value in your local `.env`:
+```powershell
+docker compose up -d --build
+```
 
-   ```dotenv
-   BACKGROUND_REMOVAL_API_KEY=your_photoroom_api_key_here
-   ```
-
-3. Rebuild/restart the app so it receives the environment change:
-
-   ```powershell
-   docker compose up -d --build
-   ```
-
-4. In Telegram, open `/create`, choose `✂️ Background Removal`, and send a JPEG, PNG,
-   WebP, or HEIC image no larger than 20 MiB. The bot replies with a transparent PNG.
-   Compare `/credits` before and after, then check `/history`: exactly one credit should
-   be charged and one completed entry shown. An unsupported file, provider error, or
-   timeout must not reduce the balance.
+In Telegram, open `/create`, choose `✂️ Background Removal`, and send a JPEG, PNG, WebP,
+or HEIC image no larger than 20 MiB and 25 megapixels. The bot replies with a transparent
+PNG. Compare `/credits` before and after, then check `/history`: exactly one credit should
+be charged and one completed entry shown. An unsupported, corrupted, oversized, or failed
+image must not reduce the balance.
 
 Source images are downloaded to a per-request temporary directory and removed after
 success or failure. GenStim stores only generation metadata; it does not persist the input
-or output image. Photoroom states that images processed through its API are not saved by
-Photoroom.
+or output image.
 
 ## Project structure
 
@@ -134,7 +124,7 @@ app/
   db/              SQLAlchemy base and async session factory
   locales/         English and Russian messages
   models/          database models
-  providers/       replaceable external AI provider adapters
+  providers/       replaceable local processing provider adapters
   repositories/    persistence operations
   services/        application rules
 migrations/        Alembic environment and revisions
@@ -153,14 +143,14 @@ Required variables are documented in `.env.example`:
 - `DATABASE_URL`
 - `ADMIN_TELEGRAM_ID`
 - `ENVIRONMENT`
-- `BACKGROUND_REMOVAL_API_KEY` (Photoroom Basic API key)
 - `BACKGROUND_REMOVAL_TIMEOUT_SECONDS` (default: `30`)
-- `BACKGROUND_REMOVAL_MAX_RETRIES` (default: `2`)
 - `BACKGROUND_REMOVAL_MAX_FILE_MB` (default: `20`)
+- `BACKGROUND_REMOVAL_MAX_PIXELS` (default: `25000000`)
+- `BACKGROUND_REMOVAL_MAX_CONCURRENCY` (default: `1`)
 
 `.env` is excluded by both `.gitignore` and `.dockerignore`. Configuration loads the bot
-token and provider key as Pydantic `SecretStr` values, and the application never logs
-them. Do not commit a real token or any other credential.
+token as a Pydantic `SecretStr`, and the application never logs it. Do not commit a real
+token or any other credential.
 
 ## Legal documents
 

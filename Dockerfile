@@ -3,7 +3,8 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    U2NET_HOME=/home/genstim/.u2net
+    REMBG_HOME=/opt/rembg \
+    NUMBA_CACHE_DIR=/opt/rembg/numba-cache
 
 WORKDIR /app
 
@@ -14,13 +15,14 @@ COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini ./alembic.ini
 
-RUN pip install --upgrade pip && pip install .
+RUN mkdir -p /opt/rembg/numba-cache && \
+    pip install --upgrade pip && pip install . && \
+    python -c "from rembg import new_session; new_session('u2netp')" && \
+    chown -R genstim:genstim /opt/rembg
 
-RUN mkdir -p "$U2NET_HOME" && chown -R genstim:genstim "$U2NET_HOME"
+ENV ORT_DISABLE_TELEMETRY=1
 
 USER genstim
-
-RUN python -c "from rembg import new_session; new_session('u2netp')"
 
 EXPOSE 8000
 

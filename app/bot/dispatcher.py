@@ -11,10 +11,12 @@ def create_dispatcher(
     *,
     background_removal_provider: BackgroundRemovalProvider,
     background_max_file_size: int,
+    background_max_pixels: int,
 ) -> Dispatcher:
     dispatcher = Dispatcher(
         background_removal_provider=background_removal_provider,
         background_max_file_size=background_max_file_size,
+        background_max_pixels=background_max_pixels,
     )
     dispatcher.update.middleware(DatabaseSessionMiddleware(session_factory))
     dispatcher.include_router(router)

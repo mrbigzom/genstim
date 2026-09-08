@@ -60,6 +60,7 @@ async def process_background_image(
     bot: Bot,
     background_removal_provider: BackgroundRemovalProvider,
     background_max_file_size: int,
+    background_max_pixels: int,
 ) -> None:
     if message.from_user is None:
         return
@@ -130,9 +131,17 @@ async def process_background_image(
     except BackgroundRemovalFailedError as exc:
         message_key = {
             "provider_timeout": "background_timeout",
-            "provider_rejected_image": "background_image_rejected",
+            "unsupported_format": "background_unsupported_format",
+            "invalid_image": "background_corrupted_image",
+            "image_too_large": "background_dimensions_too_large",
         }.get(exc.code, "background_provider_error")
-        await message.answer(get_text(user.language, message_key))
+        await message.answer(
+            get_text(
+                user.language,
+                message_key,
+                max_megapixels=background_max_pixels // 1_000_000,
+            )
+        )
         return
     except Exception as exc:
         logger.error(

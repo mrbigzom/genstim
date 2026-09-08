@@ -1,7 +1,9 @@
+from io import BytesIO
 from pathlib import Path
+from time import sleep
 
-import httpx
 import pytest
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +11,7 @@ from app.models.generation import Generation
 from app.providers.background_removal import (
     BackgroundRemovalProviderError,
     BackgroundRemovalTimeoutError,
-    PhotoroomBackgroundRemovalProvider,
+    RembgBackgroundRemovalProvider,
 )
 from app.services.background_removal import (
     BackgroundRemovalFailedError,
@@ -20,7 +22,15 @@ from app.services.generation import GenerationService
 from app.services.image_files import temporary_work_directory
 from app.services.user import UserService
 
-PNG_RESULT = b"\x89PNG\r\n\x1a\nresult"
+
+def make_image_bytes(image_format: str, *, size: tuple[int, int] = (10, 10)) -> bytes:
+    image = Image.new("RGBA" if image_format == "PNG" else "RGB", size, "red")
+    output = BytesIO()
+    image.save(output, format=image_format)
+    return output.getvalue()
+
+
+PNG_RESULT = make_image_bytes("PNG")
 
 
 class SuccessfulProvider:
@@ -212,56 +222,113 @@ async def test_history_contains_only_completed_generation(
     assert history[0].feature == "background_removal"
 
 
-async def test_photoroom_provider_retries_temporary_error(tmp_path: Path) -> None:
-    attempts = 0
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        assert request.headers["x-api-key"] == "test-key"
-        if attempts == 1:
-            return httpx.Response(503)
-        return httpx.Response(200, content=PNG_RESULT, headers={"content-type": "image/png"})
-
-    async def no_sleep(_: float) -> None:
-        return None
-
+async def test_rembg_provider_processes_locally_and_reuses_session(tmp_path: Path) -> None:
     input_path = tmp_path / "input.jpg"
-    input_path.write_bytes(b"jpeg")
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        provider = PhotoroomBackgroundRemovalProvider(
-            api_key="test-key",
-            max_retries=1,
-            client=client,
-            sleep=no_sleep,
-        )
-        result = await provider.remove_background(input_path, "image/jpeg")
+    input_path.write_bytes(make_image_bytes("JPEG"))
+    session = object()
+    session_calls = 0
+    processing_calls = 0
 
-    assert result == PNG_RESULT
-    assert attempts == 2
+    def create_session(model_name: str) -> object:
+        nonlocal session_calls
+        session_calls += 1
+        assert model_name == "u2netp"
+        return session
+
+    def remove_background(
+        image_bytes: bytes,
+        *,
+        session: object,
+        force_return_bytes: bool,
+    ) -> bytes:
+        nonlocal processing_calls
+        processing_calls += 1
+        assert image_bytes.startswith(b"\xff\xd8\xff")
+        assert session is not None
+        assert force_return_bytes is True
+        return PNG_RESULT
+
+    provider = RembgBackgroundRemovalProvider(
+        session_factory=create_session,
+        remove_function=remove_background,
+    )
+
+    first = await provider.remove_background(input_path, "image/jpeg")
+    second = await provider.remove_background(input_path, "image/jpeg")
+
+    assert first == PNG_RESULT
+    assert second == PNG_RESULT
+    assert session_calls == 1
+    assert processing_calls == 2
 
 
-async def test_photoroom_provider_maps_timeout_after_retries(tmp_path: Path) -> None:
-    attempts = 0
+async def test_rembg_provider_rejects_unsupported_format(tmp_path: Path) -> None:
+    input_path = tmp_path / "input.gif"
+    input_path.write_bytes(make_image_bytes("GIF"))
+    provider = RembgBackgroundRemovalProvider(session_factory=lambda _: object())
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        raise httpx.ReadTimeout("timed out", request=request)
+    with pytest.raises(BackgroundRemovalProviderError) as error:
+        await provider.remove_background(input_path, "image/gif")
 
-    async def no_sleep(_: float) -> None:
-        return None
+    assert error.value.code == "unsupported_format"
 
+
+async def test_rembg_provider_rejects_corrupted_image(tmp_path: Path) -> None:
+    input_path = tmp_path / "broken.jpg"
+    input_path.write_bytes(b"\xff\xd8\xffcorrupted")
+    provider = RembgBackgroundRemovalProvider(session_factory=lambda _: object())
+
+    with pytest.raises(BackgroundRemovalProviderError) as error:
+        await provider.remove_background(input_path, "image/jpeg")
+
+    assert error.value.code == "invalid_image"
+
+
+async def test_rembg_provider_rejects_excessive_pixel_count(tmp_path: Path) -> None:
+    input_path = tmp_path / "large.png"
+    input_path.write_bytes(make_image_bytes("PNG", size=(11, 10)))
+    provider = RembgBackgroundRemovalProvider(
+        max_pixels=100,
+        session_factory=lambda _: object(),
+    )
+
+    with pytest.raises(BackgroundRemovalProviderError) as error:
+        await provider.remove_background(input_path, "image/png")
+
+    assert error.value.code == "image_too_large"
+
+
+async def test_rembg_provider_maps_processing_error(tmp_path: Path) -> None:
     input_path = tmp_path / "input.jpg"
-    input_path.write_bytes(b"jpeg")
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        provider = PhotoroomBackgroundRemovalProvider(
-            api_key="test-key",
-            max_retries=1,
-            client=client,
-            sleep=no_sleep,
-        )
-        with pytest.raises(BackgroundRemovalTimeoutError):
-            await provider.remove_background(input_path, "image/jpeg")
+    input_path.write_bytes(make_image_bytes("JPEG"))
 
-    assert attempts == 2
+    def fail_processing(*_: object, **__: object) -> bytes:
+        raise RuntimeError("inference failed")
+
+    provider = RembgBackgroundRemovalProvider(
+        session_factory=lambda _: object(),
+        remove_function=fail_processing,
+    )
+
+    with pytest.raises(BackgroundRemovalProviderError) as error:
+        await provider.remove_background(input_path, "image/jpeg")
+
+    assert error.value.code == "processing_error"
+
+
+async def test_rembg_provider_enforces_processing_timeout(tmp_path: Path) -> None:
+    input_path = tmp_path / "input.jpg"
+    input_path.write_bytes(make_image_bytes("JPEG"))
+
+    def slow_processing(*_: object, **__: object) -> bytes:
+        sleep(0.05)
+        return PNG_RESULT
+
+    provider = RembgBackgroundRemovalProvider(
+        timeout_seconds=0.001,
+        session_factory=lambda _: object(),
+        remove_function=slow_processing,
+    )
+
+    with pytest.raises(BackgroundRemovalTimeoutError):
+        await provider.remove_background(input_path, "image/jpeg")

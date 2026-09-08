@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     log_level: str = "INFO"
-    background_removal_api_key: SecretStr = SecretStr("")
     background_removal_timeout_seconds: float = 30.0
-    background_removal_max_retries: int = 2
     background_removal_max_file_mb: int = 20
+    background_removal_max_pixels: int = 25_000_000
+    background_removal_max_concurrency: int = 1
 
     @field_validator("bot_token")
     @classmethod
@@ -50,11 +50,11 @@ class Settings(BaseSettings):
             raise ValueError("BACKGROUND_REMOVAL_TIMEOUT_SECONDS must be positive")
         return value
 
-    @field_validator("background_removal_max_retries")
+    @field_validator("background_removal_max_pixels")
     @classmethod
-    def validate_background_retries(cls, value: int) -> int:
-        if value < 0:
-            raise ValueError("BACKGROUND_REMOVAL_MAX_RETRIES cannot be negative")
+    def validate_background_pixels(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("BACKGROUND_REMOVAL_MAX_PIXELS must be positive")
         return value
 
     @field_validator("background_removal_max_file_mb")
@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     def validate_background_file_limit(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("BACKGROUND_REMOVAL_MAX_FILE_MB must be positive")
+        return value
+
+    @field_validator("background_removal_max_concurrency")
+    @classmethod
+    def validate_background_concurrency(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("BACKGROUND_REMOVAL_MAX_CONCURRENCY must be positive")
         return value
 
 
