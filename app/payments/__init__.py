@@ -1,3 +1,3 @@
-from app.payments.catalog import PRODUCT_CATALOG, Product
+from app.payments.catalog import CREDIT_PACKAGES, CreditPackage
 
-__all__ = ["PRODUCT_CATALOG", "Product"]
+__all__ = ["CREDIT_PACKAGES", "CreditPackage"]

@@ -10,6 +10,7 @@ from app.bot.handlers.utils import ensure_user
 from app.bot.keyboards.create import create_menu
 from app.bot.keyboards.language import language_menu
 from app.bot.keyboards.main import button_texts, main_menu
+from app.bot.keyboards.payments import credit_packages
 from app.bot.states import (
     BackgroundRemovalStates,
     MemeStates,
@@ -106,7 +107,10 @@ async def credits_command(message: Message, session: AsyncSession) -> None:
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
-    await message.answer(get_text(user.language, "credits", credits=user.credits))
+    await message.answer(
+        get_text(user.language, "credits_store", credits=user.credits),
+        reply_markup=credit_packages(user.language),
+    )
 
 
 @router.message(Command("history"))

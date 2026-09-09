@@ -5,16 +5,27 @@ from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.handlers.common import ensure_user
-from app.bot.keyboards.payments import payment_continue, payment_waiting
+from app.bot.keyboards.payments import credit_packages, payment_waiting
 from app.locales.messages import get_text
 from app.services.payment import (
+    CreditPackageNotFoundError,
     PaymentService,
     PaymentValidationError,
-    ProductNotPayableError,
 )
 
 logger = logging.getLogger(__name__)
 router = Router(name="payments")
+
+
+@router.callback_query(F.data == "stars:packages")
+async def show_credit_packages(callback: CallbackQuery, session: AsyncSession) -> None:
+    user = await ensure_user(callback.from_user, session)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            get_text(user.language, "credits_store", credits=user.credits),
+            reply_markup=credit_packages(user.language),
+        )
 
 
 @router.callback_query(F.data.startswith("stars:buy:"))
@@ -24,24 +35,25 @@ async def create_stars_invoice(
     bot: Bot,
 ) -> None:
     user = await ensure_user(callback.from_user, session)
-    product_id = (callback.data or "").removeprefix("stars:buy:")
+    package_id = (callback.data or "").removeprefix("stars:buy:")
     service = PaymentService(session)
     try:
-        product = service.payable_product(product_id)
+        package = service.credit_package(package_id)
         payment = await service.create_pending(
             user_id=user.id,
             telegram_user_id=user.telegram_id,
-            product_id=product.id,
+            package_id=package.id,
         )
-        product_name = get_text(user.language, product.name_key)
         invoice = service.build_invoice(
             payment,
-            title=product_name,
+            title=get_text(user.language, "credits_invoice_title", credits=package.credits),
             description=get_text(
-                user.language, "payment_invoice_description", product=product_name
+                user.language,
+                "credits_invoice_description",
+                credits=package.credits,
             ),
         )
-    except (ProductNotPayableError, PaymentValidationError):
+    except (CreditPackageNotFoundError, PaymentValidationError):
         await callback.answer(get_text(user.language, "payment_error"), show_alert=True)
         return
 
@@ -99,7 +111,7 @@ async def process_pre_checkout(
             currency=query.currency,
             amount=query.total_amount,
         )
-    except (ProductNotPayableError, PaymentValidationError) as exc:
+    except (CreditPackageNotFoundError, PaymentValidationError) as exc:
         logger.warning(
             "Rejected Stars pre-checkout user_id=%s error=%s", user.id, type(exc).__name__
         )
@@ -126,8 +138,7 @@ async def process_successful_payment(message: Message, session: AsyncSession) ->
             amount=successful.total_amount,
             telegram_payment_charge_id=successful.telegram_payment_charge_id,
         )
-        product = service.payable_product(receipt.payment.product_id)
-    except (ProductNotPayableError, PaymentValidationError) as exc:
+    except (CreditPackageNotFoundError, PaymentValidationError) as exc:
         logger.error(
             "Could not record successful Stars payment user_id=%s error=%s",
             user.id,
@@ -140,13 +151,15 @@ async def process_successful_payment(message: Message, session: AsyncSession) ->
     await session.commit()
 
     if receipt.duplicate:
-        await message.answer(get_text(user.language, "payment_duplicate"))
+        await message.answer(
+            get_text(user.language, "payment_duplicate", credits=receipt.balance)
+        )
         return
     await message.answer(
         get_text(
             user.language,
             "payment_success",
-            product=get_text(user.language, product.name_key),
+            added=receipt.credits_added,
+            credits=receipt.balance,
         ),
-        reply_markup=payment_continue(user.language, product.feature_callback),
     )

@@ -8,10 +8,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.credits import reject_if_insufficient
 from app.bot.handlers.common import ensure_user
 from app.bot.keyboards.local_tools import passport_backgrounds, pixel_levels
-from app.bot.payments import PAYMENT_ID_STATE_KEY, check_feature_access
+from app.bot.keyboards.payments import buy_credits_button
 from app.bot.states import PassportPhotoStates, PixelAvatarStates, StickerStates
+from app.credits.catalog import get_feature_credit_cost
 from app.locales.messages import get_text
 from app.providers.passport_photo import PASSPORT_BACKGROUNDS, PassportPhotoProvider
 from app.providers.pixel_avatar import PIXEL_LEVELS, PixelAvatarProvider
@@ -23,7 +25,6 @@ from app.services.image_files import (
     temporary_work_directory,
 )
 from app.services.local_generation import LocalGenerationFailedError, LocalGenerationService
-from app.services.payment import PaymentNotAuthorizedError
 
 logger = logging.getLogger(__name__)
 router = Router(name="local_images")
@@ -39,24 +40,22 @@ async def choose_pixel_avatar(
 ) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()
-    access = await check_feature_access(
-        callback=callback,
-        session=session,
+    if await reject_if_insufficient(
+        target=callback,
         state=state,
-        user_id=user.id,
         language=user.language,
-        product_id="pixel_avatar",
-    )
-    if access.blocked:
-        return
-    if access.payment_id is None and not await _has_credit(
-        callback, state, user.language, user.credits
+        balance=user.credits,
+        feature="pixel_avatar",
     ):
         return
     await state.set_state(PixelAvatarStates.choosing_level)
     if callback.message:
         await callback.message.answer(
-            get_text(user.language, "pixel_choose_level"),
+            get_text(
+                user.language,
+                "pixel_choose_level",
+                cost=get_feature_credit_cost("pixel_avatar"),
+            ),
             reply_markup=pixel_levels(user.language),
         )
 
@@ -97,24 +96,22 @@ async def choose_passport_photo(
 ) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()
-    access = await check_feature_access(
-        callback=callback,
-        session=session,
+    if await reject_if_insufficient(
+        target=callback,
         state=state,
-        user_id=user.id,
         language=user.language,
-        product_id="passport_photo",
-    )
-    if access.blocked:
-        return
-    if access.payment_id is None and not await _has_credit(
-        callback, state, user.language, user.credits
+        balance=user.credits,
+        feature="passport_photo",
     ):
         return
     await state.set_state(PassportPhotoStates.choosing_background)
     if callback.message:
         await callback.message.answer(
-            get_text(user.language, "passport_choose_background"),
+            get_text(
+                user.language,
+                "passport_choose_background",
+                cost=get_feature_credit_cost("passport_photo"),
+            ),
             reply_markup=passport_backgrounds(user.language),
         )
 
@@ -156,18 +153,12 @@ async def choose_sticker(
 ) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()
-    access = await check_feature_access(
-        callback=callback,
-        session=session,
+    if await reject_if_insufficient(
+        target=callback,
         state=state,
-        user_id=user.id,
         language=user.language,
-        product_id="sticker",
-    )
-    if access.blocked:
-        return
-    if access.payment_id is None and not await _has_credit(
-        callback, state, user.language, user.credits
+        balance=user.credits,
+        feature="sticker",
     ):
         return
     await state.set_state(StickerStates.waiting_for_image)
@@ -177,6 +168,7 @@ async def choose_sticker(
                 user.language,
                 "sticker_image_prompt",
                 max_mb=background_max_file_size // (1024 * 1024),
+                cost=get_feature_credit_cost("sticker"),
             )
         )
 
@@ -264,20 +256,6 @@ async def process_sticker(
     )
 
 
-async def _has_credit(
-    callback: CallbackQuery,
-    state: FSMContext,
-    language: str,
-    credits: int,
-) -> bool:
-    if credits >= 1:
-        return True
-    await state.clear()
-    if callback.message:
-        await callback.message.answer(get_text(language, "local_insufficient"))
-    return False
-
-
 async def _process_image(
     *,
     message: Message,
@@ -295,9 +273,6 @@ async def _process_image(
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
-    state_data = await state.get_data()
-    payment_id_value = state_data.get(PAYMENT_ID_STATE_KEY)
-    payment_id = int(payment_id_value) if payment_id_value is not None else None
     upload = _get_image_upload(message)
     if upload is None:
         await message.answer(get_text(user.language, "local_unsupported_format"))
@@ -333,8 +308,6 @@ async def _process_image(
                 user_id=user.id,
                 feature=feature,
                 operation=lambda: operation(image_path, content_type),
-                payment_id=payment_id,
-                telegram_user_id=user.telegram_id,
             )
             await message.answer_document(
                 BufferedInputFile(result.content, filename=filename),
@@ -344,13 +317,17 @@ async def _process_image(
                     credits=result.remaining_credits,
                 ),
             )
-    except InsufficientCreditsError:
+    except InsufficientCreditsError as exc:
         await state.clear()
-        await message.answer(get_text(user.language, "local_insufficient"))
-        return
-    except PaymentNotAuthorizedError:
-        await state.clear()
-        await message.answer(get_text(user.language, "payment_required"))
+        await message.answer(
+            get_text(
+                user.language,
+                "credits_insufficient",
+                balance=exc.balance,
+                cost=exc.required,
+            ),
+            reply_markup=buy_credits_button(user.language),
+        )
         return
     except LocalGenerationFailedError as exc:
         key = {

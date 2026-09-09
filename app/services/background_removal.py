@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.credits.catalog import get_feature_credit_cost
 from app.models.generation import Generation
 from app.providers.background_removal import (
     BackgroundRemovalProvider,
@@ -12,16 +13,17 @@ from app.providers.background_removal import (
 )
 from app.repositories.generation import GenerationRepository
 from app.repositories.user import UserRepository
-from app.services.payment import PaymentService
 
 logger = logging.getLogger(__name__)
 
 BACKGROUND_REMOVAL_FEATURE = "background_removal"
-BACKGROUND_REMOVAL_COST = 1
 
 
 class InsufficientCreditsError(Exception):
-    pass
+    def __init__(self, *, required: int, balance: int) -> None:
+        super().__init__("Insufficient credits")
+        self.required = required
+        self.balance = balance
 
 
 class BackgroundRemovalFailedError(Exception):
@@ -54,25 +56,13 @@ class BackgroundRemovalService:
         user_id: int,
         image_path: Path,
         content_type: str,
-        payment_id: int | None = None,
-        telegram_user_id: int | None = None,
     ) -> BackgroundRemovalResult:
         user = await self.users.get_by_id_for_update(user_id)
         if user is None:
             raise LookupError("User does not exist")
-        payment_service = PaymentService(self.session)
-        payment = None
-        if payment_id is not None:
-            if telegram_user_id is None:
-                raise ValueError("telegram_user_id is required with payment_id")
-            payment = await payment_service.claim_for_processing(
-                payment_id=payment_id,
-                user_id=user.id,
-                telegram_user_id=telegram_user_id,
-                product_id=BACKGROUND_REMOVAL_FEATURE,
-            )
-        elif user.credits < BACKGROUND_REMOVAL_COST:
-            raise InsufficientCreditsError
+        cost = get_feature_credit_cost(BACKGROUND_REMOVAL_FEATURE)
+        if user.credits < cost:
+            raise InsufficientCreditsError(required=cost, balance=user.credits)
 
         generation = await self.generations.create(
             Generation(
@@ -87,8 +77,6 @@ class BackgroundRemovalService:
             result = await self.provider.remove_background(image_path, content_type)
         except BackgroundRemovalProviderError as exc:
             await self._mark_failed(generation, exc.code)
-            if payment is not None:
-                await payment_service.mark_failed(payment, error_code=exc.code)
             raise BackgroundRemovalFailedError(exc.code) from exc
         except Exception as exc:
             logger.error(
@@ -97,18 +85,13 @@ class BackgroundRemovalService:
                 type(exc).__name__,
             )
             await self._mark_failed(generation, "provider_error")
-            if payment is not None:
-                await payment_service.mark_failed(payment, error_code="provider_error")
             raise BackgroundRemovalFailedError("provider_error") from exc
 
-        if payment is None:
-            user.credits -= BACKGROUND_REMOVAL_COST
-            generation.credits_spent = BACKGROUND_REMOVAL_COST
+        user.credits -= cost
+        generation.credits_spent = cost
         generation.status = "completed"
         generation.completed_at = datetime.now(UTC)
         await self.session.flush()
-        if payment is not None:
-            await payment_service.mark_fulfilled(payment, generation_id=generation.id)
         logger.info(
             "Background removal completed generation_id=%s user_id=%s",
             generation.id,

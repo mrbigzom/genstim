@@ -25,6 +25,9 @@ class Payment(Base):
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     product_id: Mapped[str] = mapped_column(String(64), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    credits_purchased: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     invoice_payload: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     telegram_payment_charge_id: Mapped[str | None] = mapped_column(

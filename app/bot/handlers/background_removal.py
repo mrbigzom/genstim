@@ -7,9 +7,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.credits import reject_if_insufficient
 from app.bot.handlers.common import ensure_user
-from app.bot.payments import PAYMENT_ID_STATE_KEY, check_feature_access
+from app.bot.keyboards.payments import buy_credits_button
 from app.bot.states import BackgroundRemovalStates
+from app.credits.catalog import get_feature_credit_cost
 from app.locales.messages import get_text
 from app.providers.background_removal import BackgroundRemovalProvider
 from app.services.background_removal import (
@@ -22,7 +24,6 @@ from app.services.image_files import (
     detect_image_content_type,
     temporary_work_directory,
 )
-from app.services.payment import PaymentNotAuthorizedError
 
 logger = logging.getLogger(__name__)
 router = Router(name="background_removal")
@@ -37,20 +38,13 @@ async def choose_background_removal(
 ) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()
-    access = await check_feature_access(
-        callback=callback,
-        session=session,
+    if await reject_if_insufficient(
+        target=callback,
         state=state,
-        user_id=user.id,
         language=user.language,
-        product_id="background_removal",
-    )
-    if access.blocked:
-        return
-    if access.payment_id is None and user.credits < 1:
-        await state.clear()
-        if callback.message:
-            await callback.message.answer(get_text(user.language, "background_insufficient"))
+        balance=user.credits,
+        feature="background_removal",
+    ):
         return
 
     await state.set_state(BackgroundRemovalStates.waiting_for_image)
@@ -60,6 +54,7 @@ async def choose_background_removal(
                 user.language,
                 "background_prompt",
                 max_mb=background_max_file_size // (1024 * 1024),
+                cost=get_feature_credit_cost("background_removal"),
             )
         )
 
@@ -77,9 +72,6 @@ async def process_background_image(
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
-    state_data = await state.get_data()
-    payment_id_value = state_data.get(PAYMENT_ID_STATE_KEY)
-    payment_id = int(payment_id_value) if payment_id_value is not None else None
     upload = _get_image_upload(message)
     if upload is None:
         await message.answer(get_text(user.language, "background_unsupported_format"))
@@ -127,8 +119,6 @@ async def process_background_image(
                 user_id=user.id,
                 image_path=image_path,
                 content_type=content_type,
-                payment_id=payment_id,
-                telegram_user_id=user.telegram_id,
             )
             await message.answer_document(
                 BufferedInputFile(
@@ -141,13 +131,17 @@ async def process_background_image(
                     credits=result.remaining_credits,
                 ),
             )
-    except InsufficientCreditsError:
+    except InsufficientCreditsError as exc:
         await state.clear()
-        await message.answer(get_text(user.language, "background_insufficient"))
-        return
-    except PaymentNotAuthorizedError:
-        await state.clear()
-        await message.answer(get_text(user.language, "payment_required"))
+        await message.answer(
+            get_text(
+                user.language,
+                "credits_insufficient",
+                balance=exc.balance,
+                cost=exc.required,
+            ),
+            reply_markup=buy_credits_button(user.language),
+        )
         return
     except BackgroundRemovalFailedError as exc:
         message_key = {

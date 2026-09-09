@@ -136,17 +136,18 @@ Anime remain in the internal feature registry for future work but are hidden fro
 
 ## Telegram Stars payments
 
-Digital services can be enabled individually in `app/payments/catalog.py`. Every catalog
-entry has a placeholder `stars_amount` and a `payments_enabled` switch. All switches are
-off by default, so the existing one-credit behavior remains active until a final Stars
-price is chosen for a function.
+Telegram Stars buy internal GenStim credits. Top-up packages are centralized in
+`app/payments/catalog.py`: 10 Stars add 10 credits, 25 Stars add 30 credits, and 50 Stars
+add 65 credits. Function costs are configured separately in `app/credits/catalog.py`; the
+six implemented local tools currently cost one credit per successful result.
 
-When enabled, the bot creates an `XTR` invoice with no payment provider token. It validates
-the user, product, payload, currency, and amount during pre-checkout and again when Telegram
-sends `successful_payment`. The service is unlocked only after that confirmation. Payments
-and Telegram charge IDs are stored in PostgreSQL, and one payment can start no more than
-one generation. Refund timestamps and identifiers are reserved in the schema for a later
-refund workflow; this release does not expose refunds or Stars withdrawal.
+The bot creates an `XTR` invoice with no payment provider token. It validates the user,
+package, payload, currency, price, and credited amount during pre-checkout and again when
+Telegram sends `successful_payment`. The payment record and balance increment are persisted
+in one database transaction. Unique Telegram charge IDs and locked payment/user rows prevent
+duplicate delivery from adding credits twice. Generations only spend the internal balance.
+Refund timestamps and identifiers remain reserved in the schema for a later refund workflow;
+this release does not expose refunds or Stars withdrawal.
 
 No new environment variable, API key, TON wallet, smart contract, or BotFather payment
 provider configuration is required for Telegram Stars.

@@ -27,20 +27,7 @@ class PaymentRepository:
 
     async def get_by_charge_id(self, charge_id: str) -> Payment | None:
         return await self.session.scalar(
-            select(Payment).where(Payment.telegram_payment_charge_id == charge_id)
-        )
-
-    async def get_available_for_update(
-        self, user_id: int, product_id: str
-    ) -> Payment | None:
-        return await self.session.scalar(
             select(Payment)
-            .where(
-                Payment.user_id == user_id,
-                Payment.product_id == product_id,
-                Payment.status.in_(("authorized", "paid")),
-            )
-            .order_by(Payment.authorized_at.desc().nulls_last(), Payment.paid_at, Payment.id)
-            .limit(1)
+            .where(Payment.telegram_payment_charge_id == charge_id)
             .with_for_update()
         )

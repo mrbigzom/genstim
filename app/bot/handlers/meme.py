@@ -3,15 +3,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.credits import reject_if_insufficient
 from app.bot.handlers.common import ensure_user
 from app.bot.keyboards.local_tools import meme_templates
-from app.bot.payments import PAYMENT_ID_STATE_KEY, check_feature_access
+from app.bot.keyboards.payments import buy_credits_button
 from app.bot.states import MemeStates
+from app.credits.catalog import get_feature_credit_cost
 from app.locales.messages import get_text
 from app.providers.meme import MEME_MAX_TEXT_LENGTH, MemeProvider
 from app.services.background_removal import InsufficientCreditsError
 from app.services.local_generation import LocalGenerationFailedError, LocalGenerationService
-from app.services.payment import PaymentNotAuthorizedError
 
 router = Router(name="meme")
 
@@ -24,25 +25,22 @@ async def choose_meme(
 ) -> None:
     user = await ensure_user(callback.from_user, session)
     await callback.answer()
-    access = await check_feature_access(
-        callback=callback,
-        session=session,
+    if await reject_if_insufficient(
+        target=callback,
         state=state,
-        user_id=user.id,
         language=user.language,
-        product_id="meme_generator",
-    )
-    if access.blocked:
-        return
-    if access.payment_id is None and user.credits < 1:
-        await state.clear()
-        if callback.message:
-            await callback.message.answer(get_text(user.language, "local_insufficient"))
+        balance=user.credits,
+        feature="meme_generator",
+    ):
         return
     await state.set_state(MemeStates.choosing_template)
     if callback.message:
         await callback.message.answer(
-            get_text(user.language, "meme_choose_template"),
+            get_text(
+                user.language,
+                "meme_choose_template",
+                cost=get_feature_credit_cost("meme_generator"),
+            ),
             reply_markup=meme_templates(user.language),
         )
 
@@ -100,8 +98,6 @@ async def receive_meme_bottom(
         )
         return
     data = await state.get_data()
-    payment_id_value = data.get(PAYMENT_ID_STATE_KEY)
-    payment_id = int(payment_id_value) if payment_id_value is not None else None
     template = str(data.get("template", ""))
     top_text = str(data.get("top_text", ""))
     bottom_text = "" if message.text.strip() == "-" else message.text
@@ -111,16 +107,18 @@ async def receive_meme_bottom(
             user_id=user.id,
             feature="meme_generator",
             operation=lambda: meme_provider.generate(template, top_text, bottom_text),
-            payment_id=payment_id,
-            telegram_user_id=user.telegram_id,
         )
-    except InsufficientCreditsError:
+    except InsufficientCreditsError as exc:
         await state.clear()
-        await message.answer(get_text(user.language, "local_insufficient"))
-        return
-    except PaymentNotAuthorizedError:
-        await state.clear()
-        await message.answer(get_text(user.language, "payment_required"))
+        await message.answer(
+            get_text(
+                user.language,
+                "credits_insufficient",
+                balance=exc.balance,
+                cost=exc.required,
+            ),
+            reply_markup=buy_credits_button(user.language),
+        )
         return
     except LocalGenerationFailedError as exc:
         key = "meme_text_too_long" if exc.code == "input_too_long" else "local_processing_error"

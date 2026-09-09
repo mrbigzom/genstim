@@ -6,15 +6,12 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment import Payment
-from app.payments.catalog import PRODUCT_CATALOG, STARS_CURRENCY, Product
+from app.payments.catalog import CREDIT_PACKAGES, STARS_CURRENCY, CreditPackage
 from app.repositories.payment import PaymentRepository
+from app.repositories.user import UserRepository
 
 PENDING = "pending"
-PAID = "paid"
-AUTHORIZED = "authorized"
-PROCESSING = "processing"
 FULFILLED = "fulfilled"
-FAILED = "failed"
 CANCELLED = "cancelled"
 REFUNDED = "refunded"
 
@@ -23,15 +20,11 @@ class PaymentError(Exception):
     pass
 
 
-class ProductNotPayableError(PaymentError):
+class CreditPackageNotFoundError(PaymentError):
     pass
 
 
 class PaymentValidationError(PaymentError):
-    pass
-
-
-class PaymentNotAuthorizedError(PaymentError):
     pass
 
 
@@ -48,38 +41,40 @@ class InvoiceRequest:
 class PaymentReceipt:
     payment: Payment
     duplicate: bool
+    credits_added: int
+    balance: int
 
 
 class PaymentService:
     def __init__(
         self,
         session: AsyncSession,
-        catalog: Mapping[str, Product] = PRODUCT_CATALOG,
+        catalog: Mapping[str, CreditPackage] = CREDIT_PACKAGES,
     ) -> None:
         self.session = session
         self.catalog = catalog
         self.repository = PaymentRepository(session)
+        self.users = UserRepository(session)
 
-    def payable_product(self, product_id: str) -> Product:
-        product = self.catalog.get(product_id)
-        if product is None or product.paid_amount is None:
-            raise ProductNotPayableError(product_id)
-        if product.paid_amount <= 0:
-            raise ProductNotPayableError(product_id)
-        return product
+    def credit_package(self, package_id: str) -> CreditPackage:
+        package = self.catalog.get(package_id)
+        if package is None or package.stars_amount <= 0 or package.credits <= 0:
+            raise CreditPackageNotFoundError(package_id)
+        return package
 
     async def create_pending(
-        self, *, user_id: int, telegram_user_id: int, product_id: str
+        self, *, user_id: int, telegram_user_id: int, package_id: str
     ) -> Payment:
-        product = self.payable_product(product_id)
+        package = self.credit_package(package_id)
         return await self.repository.create(
             Payment(
                 user_id=user_id,
                 telegram_user_id=telegram_user_id,
-                product_id=product.id,
-                amount=product.paid_amount,
+                product_id=package.id,
+                amount=package.stars_amount,
+                credits_purchased=package.credits,
                 currency=STARS_CURRENCY,
-                invoice_payload=f"genstim:v1:{uuid4().hex}",
+                invoice_payload=f"genstim:credits:v1:{uuid4().hex}",
                 status=PENDING,
             )
         )
@@ -87,9 +82,8 @@ class PaymentService:
     def build_invoice(
         self, payment: Payment, *, title: str, description: str
     ) -> InvoiceRequest:
-        product = self.payable_product(payment.product_id)
-        if payment.amount != product.paid_amount or payment.currency != STARS_CURRENCY:
-            raise PaymentValidationError("Payment no longer matches the product catalog")
+        package = self.credit_package(payment.product_id)
+        self._validate_catalog_fields(payment, package)
         return InvoiceRequest(
             title=title,
             description=description,
@@ -129,25 +123,33 @@ class PaymentService:
     ) -> PaymentReceipt:
         existing = await self.repository.get_by_charge_id(telegram_payment_charge_id)
         if existing is not None:
-            if (
-                existing.telegram_user_id == telegram_user_id
-                and existing.invoice_payload == invoice_payload
-                and existing.currency == currency
-                and existing.amount == amount
-            ):
-                return PaymentReceipt(existing, duplicate=True)
-            raise PaymentValidationError("Charge id belongs to another payment")
+            self._validate_duplicate(
+                existing,
+                telegram_user_id=telegram_user_id,
+                invoice_payload=invoice_payload,
+                currency=currency,
+                amount=amount,
+            )
+            user = await self.users.get_by_id_for_update(existing.user_id)
+            if user is None:
+                raise PaymentValidationError("Payment user no longer exists")
+            return PaymentReceipt(existing, True, 0, user.credits)
 
         payment = await self.repository.get_by_payload_for_update(invoice_payload)
         if payment is not None and payment.telegram_payment_charge_id is not None:
-            if (
-                payment.telegram_payment_charge_id == telegram_payment_charge_id
-                and payment.telegram_user_id == telegram_user_id
-                and payment.currency == currency
-                and payment.amount == amount
-            ):
-                return PaymentReceipt(payment, duplicate=True)
-            raise PaymentValidationError("Invoice was already linked to another charge")
+            self._validate_duplicate(
+                payment,
+                telegram_user_id=telegram_user_id,
+                invoice_payload=invoice_payload,
+                currency=currency,
+                amount=amount,
+                telegram_payment_charge_id=telegram_payment_charge_id,
+            )
+            user = await self.users.get_by_id_for_update(payment.user_id)
+            if user is None:
+                raise PaymentValidationError("Payment user no longer exists")
+            return PaymentReceipt(payment, True, 0, user.credits)
+
         self._validate_payment(
             payment,
             telegram_user_id=telegram_user_id,
@@ -157,64 +159,18 @@ class PaymentService:
             required_status=(PENDING, CANCELLED),
         )
         assert payment is not None
+        user = await self.users.get_by_id_for_update(payment.user_id)
+        if user is None or user.telegram_id != telegram_user_id:
+            raise PaymentValidationError("Payment user does not match")
+
+        now = datetime.now(UTC)
+        user.credits += payment.credits_purchased
         payment.telegram_payment_charge_id = telegram_payment_charge_id
-        payment.status = PAID
-        payment.paid_at = datetime.now(UTC)
-        await self.session.flush()
-        return PaymentReceipt(payment, duplicate=False)
-
-    async def authorize_available(self, *, user_id: int, product_id: str) -> Payment | None:
-        product = self.payable_product(product_id)
-        payment = await self.repository.get_available_for_update(user_id, product.id)
-        if payment is None:
-            return None
-        self._validate_catalog_fields(payment, product)
-        if payment.status == PAID:
-            payment.status = AUTHORIZED
-            payment.authorized_at = datetime.now(UTC)
-            await self.session.flush()
-        return payment
-
-    async def claim_for_processing(
-        self,
-        *,
-        payment_id: int,
-        user_id: int,
-        telegram_user_id: int,
-        product_id: str,
-    ) -> Payment:
-        product = self.payable_product(product_id)
-        payment = await self.repository.get_by_id_for_update(payment_id)
-        if (
-            payment is None
-            or payment.user_id != user_id
-            or payment.telegram_user_id != telegram_user_id
-            or payment.product_id != product.id
-            or payment.status != AUTHORIZED
-            or payment.telegram_payment_charge_id is None
-        ):
-            raise PaymentNotAuthorizedError(product_id)
-        self._validate_catalog_fields(payment, product)
-        payment.status = PROCESSING
-        payment.service_started_at = datetime.now(UTC)
-        await self.session.flush()
-        return payment
-
-    async def mark_fulfilled(self, payment: Payment, *, generation_id: int) -> None:
-        if payment.status != PROCESSING or payment.generation_id is not None:
-            raise PaymentNotAuthorizedError(payment.product_id)
         payment.status = FULFILLED
-        payment.generation_id = generation_id
-        payment.fulfilled_at = datetime.now(UTC)
+        payment.paid_at = now
+        payment.fulfilled_at = now
         await self.session.flush()
-
-    async def mark_failed(self, payment: Payment, *, error_code: str) -> None:
-        if payment.status != PROCESSING:
-            return
-        payment.status = FAILED
-        payment.error_code = error_code
-        payment.failed_at = datetime.now(UTC)
-        await self.session.flush()
+        return PaymentReceipt(payment, False, payment.credits_purchased, user.credits)
 
     async def cancel_pending(self, *, payment_id: int, telegram_user_id: int) -> bool:
         payment = await self.repository.get_by_id_for_update(payment_id)
@@ -240,7 +196,7 @@ class PaymentService:
     ) -> None:
         if payment is None:
             raise PaymentValidationError("Unknown invoice payload")
-        product = self.payable_product(payment.product_id)
+        package = self.credit_package(payment.product_id)
         allowed_statuses = (
             (required_status,) if isinstance(required_status, str) else required_status
         )
@@ -252,9 +208,35 @@ class PaymentService:
             or payment.status not in allowed_statuses
         ):
             raise PaymentValidationError("Payment data does not match the invoice")
-        self._validate_catalog_fields(payment, product)
+        self._validate_catalog_fields(payment, package)
 
     @staticmethod
-    def _validate_catalog_fields(payment: Payment, product: Product) -> None:
-        if payment.currency != STARS_CURRENCY or payment.amount != product.paid_amount:
-            raise PaymentValidationError("Payment does not match the product catalog")
+    def _validate_catalog_fields(payment: Payment, package: CreditPackage) -> None:
+        if (
+            payment.currency != STARS_CURRENCY
+            or payment.amount != package.stars_amount
+            or payment.credits_purchased != package.credits
+        ):
+            raise PaymentValidationError("Payment does not match the package catalog")
+
+    @staticmethod
+    def _validate_duplicate(
+        payment: Payment,
+        *,
+        telegram_user_id: int,
+        invoice_payload: str,
+        currency: str,
+        amount: int,
+        telegram_payment_charge_id: str | None = None,
+    ) -> None:
+        if (
+            payment.telegram_user_id != telegram_user_id
+            or payment.invoice_payload != invoice_payload
+            or payment.currency != currency
+            or payment.amount != amount
+            or (
+                telegram_payment_charge_id is not None
+                and payment.telegram_payment_charge_id != telegram_payment_charge_id
+            )
+        ):
+            raise PaymentValidationError("Charge id belongs to another payment")
