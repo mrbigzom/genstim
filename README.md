@@ -5,8 +5,8 @@ FastAPI, PostgreSQL, SQLAlchemy 2, Alembic, and Docker Compose.
 
 The current release provides English and Russian menus, user accounts with three free
 credits, referral links, localized command handlers, generation history, an HTTP health
-endpoint, and six local CPU-only creation tools. Paid AI APIs and Telegram Stars payments
-remain deliberately disabled.
+endpoint, six local CPU-only creation tools, and an opt-in Telegram Stars payment flow.
+No paid AI API is configured.
 
 ## Quick start with Docker
 
@@ -134,6 +134,23 @@ credit and creates a completed `/history` record. Failed operations do not spend
 AI Avatars, Pet AI, Couple & Family, Baby, Game Character, Roast Me, Photo Enhance, and
 Anime remain in the internal feature registry for future work but are hidden from users.
 
+## Telegram Stars payments
+
+Digital services can be enabled individually in `app/payments/catalog.py`. Every catalog
+entry has a placeholder `stars_amount` and a `payments_enabled` switch. All switches are
+off by default, so the existing one-credit behavior remains active until a final Stars
+price is chosen for a function.
+
+When enabled, the bot creates an `XTR` invoice with no payment provider token. It validates
+the user, product, payload, currency, and amount during pre-checkout and again when Telegram
+sends `successful_payment`. The service is unlocked only after that confirmation. Payments
+and Telegram charge IDs are stored in PostgreSQL, and one payment can start no more than
+one generation. Refund timestamps and identifiers are reserved in the schema for a later
+refund workflow; this release does not expose refunds or Stars withdrawal.
+
+No new environment variable, API key, TON wallet, smart contract, or BotFather payment
+provider configuration is required for Telegram Stars.
+
 Image tools accept JPEG, PNG, WebP, and HEIC files up to 20 MiB and 25 megapixels. Input
 files live only in per-request temporary directories, are removed after success or failure,
 and are never written to application logs. QR payloads and meme text are not logged.
@@ -162,7 +179,7 @@ tests/             service, configuration, and API tests
 ```
 
 The repository keeps transport, provider adapters, business rules, and persistence
-separate so future AI generation, sticker packs, Telegram Stars, background jobs, referral
+separate so future AI generation, sticker packs, background jobs, referral
 rewards, and an admin panel can be added without changing the MVP core.
 
 ## Configuration and secrets

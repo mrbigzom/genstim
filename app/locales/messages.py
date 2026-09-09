@@ -42,8 +42,6 @@ TEXTS: dict[str, dict[str, str]] = {
             "maximum resolution: 25 megapixels."
         ),
         "background_invalid_image": "Send a valid JPEG or PNG image.",
-        "background_too_large": "That image is too large. Use a file under 10 MB and 25 MP.",
-        "background_processing": "Removing the background locally…",
         "background_failed": "The background could not be removed. Try another image.",
         "background_ready": "Done — your transparent PNG is ready.",
         "background_cancelled": "Background Removal cancelled.",
@@ -97,6 +95,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "feature_pixel_avatar": "🧱 Pixel Avatar",
         "feature_passport_photo": "📸 Passport / ID Photo",
         "feature_sticker": "😎 Sticker",
+        "feature_ai_avatar": "🎨 AI Avatar",
+        "feature_pet_ai": "🐾 Pet AI",
+        "feature_family_ai": "❤️ Couple & Family",
+        "feature_baby_ai": "👶 Baby",
+        "feature_anime_ai": "🎌 Anime",
+        "feature_game_character": "🎮 Game Character",
+        "feature_photo_enhance": "✨ Photo Enhance",
+        "feature_roast_me": "🔥 Roast Me",
+        "payment_cost": (
+            "<b>{product}</b> costs <b>{amount} Telegram Stars</b>. "
+            "Payment unlocks one run of this function."
+        ),
+        "payment_invoice_description": "One digital service: {product}",
+        "payment_waiting": (
+            "The Stars invoice was sent. Complete it in Telegram to continue. "
+            "No service will start before Telegram confirms the payment."
+        ),
+        "payment_success": (
+            "✅ Payment received for {product}. Tap Continue to provide the input."
+        ),
+        "payment_error": (
+            "The payment could not be verified. Please try again or use /paysupport."
+        ),
+        "payment_validation_error": (
+            "The invoice details no longer match this service. Please create a new invoice."
+        ),
+        "payment_duplicate": (
+            "This payment was already processed. It will not start the service twice."
+        ),
+        "payment_cancelled": (
+            "Payment was cancelled or not completed. No service was started."
+        ),
+        "payment_not_pending": "This invoice is no longer awaiting payment.",
+        "payment_required": (
+            "A verified Telegram Stars payment is required before this service can start."
+        ),
         "local_insufficient": "You do not have enough credits. This operation requires 1 credit.",
         "local_invalid": "That option is not available.",
         "local_unsupported_format": (
@@ -182,8 +216,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "Please do not send passwords, tokens, or payment card details."
         ),
         "paysupport": (
-            "Payments are not enabled in this MVP yet. For a payment-related question, "
-            "contact @GenStimAI_bot."
+            "For a Telegram Stars payment question, contact @GenStimAI_bot and include "
+            "the approximate payment time. Never send passwords or login codes."
         ),
         "unknown": "I did not recognize that option. Please use the menu or /help.",
         "error": "Something went wrong. Please try again in a moment.",
@@ -227,10 +261,6 @@ TEXTS: dict[str, dict[str, str]] = {
             "разрешение — 25 мегапикселей."
         ),
         "background_invalid_image": "Отправьте корректное изображение JPEG или PNG.",
-        "background_too_large": (
-            "Изображение слишком большое. Используйте файл до 10 МБ и 25 Мп."
-        ),
-        "background_processing": "Удаляю фон локально…",
         "background_failed": "Не удалось удалить фон. Попробуйте другое изображение.",
         "background_ready": "Готово — PNG с прозрачным фоном создан.",
         "background_cancelled": "Удаление фона отменено.",
@@ -284,6 +314,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "feature_pixel_avatar": "🧱 Пиксельный аватар",
         "feature_passport_photo": "📸 Фото на документы",
         "feature_sticker": "😎 Стикер",
+        "feature_ai_avatar": "🎨 AI-аватар",
+        "feature_pet_ai": "🐾 Питомцы AI",
+        "feature_family_ai": "❤️ Пара и семья",
+        "feature_baby_ai": "👶 Ребёнок",
+        "feature_anime_ai": "🎌 Аниме",
+        "feature_game_character": "🎮 Игровой персонаж",
+        "feature_photo_enhance": "✨ Улучшение фото",
+        "feature_roast_me": "🔥 Прожарь меня",
+        "payment_cost": (
+            "<b>{product}</b> стоит <b>{amount} Telegram Stars</b>. "
+            "Оплата открывает один запуск этой функции."
+        ),
+        "payment_invoice_description": "Одна цифровая услуга: {product}",
+        "payment_waiting": (
+            "Счёт в Stars отправлен. Завершите оплату в Telegram, чтобы продолжить. "
+            "До подтверждения Telegram услуга не запустится."
+        ),
+        "payment_success": (
+            "✅ Оплата за {product} получена. Нажмите «Продолжить» и отправьте данные."
+        ),
+        "payment_error": (
+            "Не удалось проверить оплату. Попробуйте ещё раз или используйте /paysupport."
+        ),
+        "payment_validation_error": (
+            "Данные счёта больше не соответствуют услуге. Создайте новый счёт."
+        ),
+        "payment_duplicate": (
+            "Этот платёж уже обработан. Повторный запуск услуги не выполнен."
+        ),
+        "payment_cancelled": (
+            "Оплата отменена или не завершена. Услуга не запускалась."
+        ),
+        "payment_not_pending": "Этот счёт больше не ожидает оплаты.",
+        "payment_required": (
+            "Для запуска услуги требуется подтверждённая оплата Telegram Stars."
+        ),
         "local_insufficient": "Недостаточно кредитов. Для этой операции нужен 1 кредит.",
         "local_invalid": "Этот вариант недоступен.",
         "local_unsupported_format": (
@@ -361,8 +427,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "Не присылайте пароли, токены и данные банковских карт."
         ),
         "paysupport": (
-            "Платежи в этом MVP пока не подключены. По вопросам оплаты обратитесь "
-            "к @GenStimAI_bot."
+            "По вопросам оплаты Telegram Stars обратитесь к @GenStimAI_bot и укажите "
+            "примерное время платежа. Не присылайте пароли и коды входа."
         ),
         "unknown": "Не удалось распознать пункт. Используйте меню или команду /help.",
         "error": "Что-то пошло не так. Попробуйте ещё раз через минуту.",
