@@ -105,9 +105,9 @@ docker compose up -d --build
 
 In Telegram, open `/create`, choose `✂️ Background Removal`, and send a JPEG, PNG, WebP,
 or HEIC image no larger than 20 MiB and 25 megapixels. The bot replies with a transparent
-PNG. Compare `/credits` before and after, then check `/history`: exactly one credit should
-be charged and one completed entry shown. An unsupported, corrupted, oversized, or failed
-image must not reduce the balance.
+PNG. Compare `/credits` before and after, then check `/history`: the configured credit cost
+should be charged and one completed entry shown. An unsupported, corrupted, oversized, or
+failed image must not reduce the balance.
 
 Source images are downloaded to a per-request temporary directory and removed after
 success or failure. GenStim stores only generation metadata; it does not persist the input
@@ -115,8 +115,9 @@ or output image.
 
 ## Local CPU tools
 
-The `/create` menu exposes only implemented tools. Every successful operation costs one
-credit and creates a completed `/history` record. Failed operations do not spend a credit.
+The `/create` menu exposes only implemented tools. Every successful operation uses the price
+from `app/credits/catalog.py` and creates a completed `/history` record. Failed operations do
+not spend credits.
 
 - **Background Removal** — `rembg` with the local `u2netp` model; transparent PNG.
 - **QR Designer** — `python-qrcode`; local, scannable PNG from text or a URL (up to 1024
@@ -138,8 +139,7 @@ Anime remain in the internal feature registry for future work but are hidden fro
 
 Telegram Stars buy internal GenStim credits. Top-up packages are centralized in
 `app/payments/catalog.py`: 10 Stars add 10 credits, 25 Stars add 30 credits, and 50 Stars
-add 65 credits. Function costs are configured separately in `app/credits/catalog.py`; the
-six implemented local tools currently cost one credit per successful result.
+add 65 credits. Function costs are configured separately in `app/credits/catalog.py`.
 
 The bot creates an `XTR` invoice with no payment provider token. It validates the user,
 package, payload, currency, price, and credited amount during pre-checkout and again when

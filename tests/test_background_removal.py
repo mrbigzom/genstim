@@ -63,11 +63,12 @@ async def create_user(session: AsyncSession, telegram_id: int = 1001):
     return user
 
 
-async def test_successful_processing_charges_one_credit_and_completes_record(
+async def test_successful_processing_charges_configured_credits_and_completes_record(
     session: AsyncSession,
     tmp_path: Path,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
     input_path = tmp_path / "input.jpg"
     input_path.write_bytes(b"jpeg")
     provider = SuccessfulProvider()
@@ -79,10 +80,10 @@ async def test_successful_processing_charges_one_credit_and_completes_record(
     )
 
     assert result.image == PNG_RESULT
-    assert result.remaining_credits == 2
-    assert user.credits == 2
+    assert result.remaining_credits == 5
+    assert user.credits == 5
     assert result.generation.status == "completed"
-    assert result.generation.credits_spent == 1
+    assert result.generation.credits_spent == 5
     assert result.generation.completed_at is not None
     assert result.generation.error_code is None
     assert provider.calls == 1
@@ -115,6 +116,7 @@ async def test_provider_error_records_failure_without_charging_credit(
     tmp_path: Path,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
     provider = FailingProvider(BackgroundRemovalProviderError("provider_unavailable"))
 
     with pytest.raises(BackgroundRemovalFailedError) as error:
@@ -126,7 +128,7 @@ async def test_provider_error_records_failure_without_charging_credit(
 
     record = await session.scalar(select(Generation))
     assert error.value.code == "provider_unavailable"
-    assert user.credits == 3
+    assert user.credits == 10
     assert record is not None
     assert record.status == "failed"
     assert record.credits_spent == 0
@@ -139,6 +141,7 @@ async def test_timeout_records_specific_error_without_charging_credit(
     tmp_path: Path,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
     provider = FailingProvider(BackgroundRemovalTimeoutError())
 
     with pytest.raises(BackgroundRemovalFailedError) as error:
@@ -150,7 +153,7 @@ async def test_timeout_records_specific_error_without_charging_credit(
 
     record = await session.scalar(select(Generation))
     assert error.value.code == "provider_timeout"
-    assert user.credits == 3
+    assert user.credits == 10
     assert record is not None
     assert record.error_code == "provider_timeout"
 
@@ -160,6 +163,7 @@ async def test_credit_is_charged_only_for_the_successful_attempt(
     tmp_path: Path,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
     failed_service = BackgroundRemovalService(
         session,
         FailingProvider(BackgroundRemovalProviderError("provider_error")),
@@ -178,9 +182,9 @@ async def test_credit_is_charged_only_for_the_successful_attempt(
     )
 
     records = list(await session.scalars(select(Generation).order_by(Generation.id)))
-    assert user.credits == 2
-    assert result.remaining_credits == 2
-    assert [record.credits_spent for record in records] == [0, 1]
+    assert user.credits == 5
+    assert result.remaining_credits == 5
+    assert [record.credits_spent for record in records] == [0, 5]
 
 
 def test_temporary_work_directory_is_removed_after_error(tmp_path: Path) -> None:
@@ -201,6 +205,7 @@ async def test_history_contains_only_completed_generation(
     tmp_path: Path,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
     with pytest.raises(BackgroundRemovalFailedError):
         await BackgroundRemovalService(
             session,

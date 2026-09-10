@@ -118,6 +118,7 @@ async def test_local_generation_charges_only_on_success_and_appears_in_history(
     session: AsyncSession,
 ) -> None:
     user = await create_user(session)
+    user.credits = 10
 
     async def fail() -> bytes:
         raise LocalProcessingError("processing_error")
@@ -128,7 +129,7 @@ async def test_local_generation_charges_only_on_success_and_appears_in_history(
             feature="qr_designer",
             operation=fail,
         )
-    assert user.credits == 3
+    assert user.credits == 10
 
     result = await LocalGenerationService(session).process(
         user_id=user.id,
@@ -137,9 +138,9 @@ async def test_local_generation_charges_only_on_success_and_appears_in_history(
     )
     records = list(await session.scalars(select(Generation).order_by(Generation.id)))
     history = await GenerationService(session).completed_history(user.id)
-    assert result.remaining_credits == 2
+    assert result.remaining_credits == 5
     assert [record.status for record in records] == ["failed", "completed"]
-    assert [record.credits_spent for record in records] == [0, 1]
+    assert [record.credits_spent for record in records] == [0, 5]
     assert [record.id for record in history] == [result.generation.id]
 
 

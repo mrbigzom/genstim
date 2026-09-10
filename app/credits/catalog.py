@@ -1,12 +1,12 @@
 # Cost of one successful function run in internal GenStim credits.
 # Add future functions here and change costs in this single catalog.
 FEATURE_CREDIT_COSTS: dict[str, int] = {
-    "background_removal": 1,
-    "qr_designer": 1,
-    "meme_generator": 1,
-    "pixel_avatar": 1,
-    "passport_photo": 1,
-    "sticker": 1,
+    "background_removal": 5,
+    "qr_designer": 5,
+    "meme_generator": 5,
+    "pixel_avatar": 10,
+    "passport_photo": 10,
+    "sticker": 5,
 }
 
 

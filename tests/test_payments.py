@@ -66,12 +66,12 @@ def test_credit_package_catalog() -> None:
 
 def test_function_cost_catalog() -> None:
     assert FEATURE_CREDIT_COSTS == {
-        "background_removal": 1,
-        "qr_designer": 1,
-        "meme_generator": 1,
-        "pixel_avatar": 1,
-        "passport_photo": 1,
-        "sticker": 1,
+        "background_removal": 5,
+        "qr_designer": 5,
+        "meme_generator": 5,
+        "pixel_avatar": 10,
+        "passport_photo": 10,
+        "sticker": 5,
     }
 
 
@@ -248,6 +248,7 @@ async def test_function_is_blocked_when_balance_is_insufficient(
 
 async def test_one_function_run_deducts_credits_once(session: AsyncSession) -> None:
     user = await create_user(session)
+    user.credits = 10
     calls = 0
 
     async def operation() -> bytes:
@@ -262,8 +263,8 @@ async def test_one_function_run_deducts_credits_once(session: AsyncSession) -> N
     )
 
     assert calls == 1
-    assert result.generation.credits_spent == 1
-    assert user.credits == 2
+    assert result.generation.credits_spent == 5
+    assert user.credits == 5
 
 
 async def test_insufficient_message_has_buy_credits_button() -> None:
@@ -282,12 +283,15 @@ async def test_insufficient_message_has_buy_credits_button() -> None:
         target=callback,  # type: ignore[arg-type]
         state=state,  # type: ignore[arg-type]
         language="en",
-        balance=0,
+        balance=4,
         feature="qr_designer",
     )
 
     assert blocked is True
     state.clear.assert_awaited_once()
+    message = callback.message.answer.await_args.args[0]
+    assert "balance is <b>4</b>" in message
+    assert "<b>5 credits</b>" in message
     kwargs = callback.message.answer.await_args.kwargs
     assert "reply_markup" in kwargs
     assert kwargs["reply_markup"].inline_keyboard[0][0].callback_data == "stars:packages"

@@ -52,17 +52,17 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "credits_insufficient": (
             "Not enough credits. Your balance is <b>{balance}</b>; "
-            "this function costs <b>{cost}</b>."
+            "this function costs <b>{cost} credits</b>."
         ),
         "history_empty": "You do not have any creations yet. Start with /create 🎨",
         "history_header": "<b>Your recent creations</b>\n\n{items}",
         "history_item": (
-            "{index}. {feature}\n✅ Completed · {credits} credit\n{date}"
+            "{index}. {feature}\n✅ Completed · Credits spent: {credits}\n{date}"
         ),
         "feature_background_removal": "✂️ Background Removal",
         "background_prompt": (
             "Send a JPEG, PNG, WebP, or HEIC image (up to {max_mb} MB). "
-            "The result costs {cost} credit, charged only after successful processing."
+            "The result costs {cost} credits, charged only after successful processing."
         ),
         "background_only_images": "Please send an image, not text or another file.",
         "background_unsupported_format": (
@@ -74,9 +74,6 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "background_success": (
             "✅ Background removed. Remaining balance: <b>{credits} credits</b>."
-        ),
-        "background_insufficient": (
-            "You do not have enough credits. Background Removal requires 1 credit."
         ),
         "background_timeout": (
             "Local image processing took too long. No credit was charged. "
@@ -135,7 +132,6 @@ TEXTS: dict[str, dict[str, str]] = {
             "Payment was cancelled or not completed. No credits were added."
         ),
         "payment_not_pending": "This invoice is no longer awaiting payment.",
-        "local_insufficient": "You do not have enough credits. This operation requires 1 credit.",
         "local_invalid": "That option is not available.",
         "local_unsupported_format": (
             "This image format is not supported. Please send a JPEG, PNG, WebP, or HEIC image."
@@ -160,7 +156,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "local_only_images": "Please send an image, not text or another file.",
         "qr_prompt": (
             "Send the text or URL to encode (up to {max_characters} characters). "
-            "The QR code costs {cost} credit."
+            "The QR code costs {cost} credits."
         ),
         "qr_processing": "⏳ Generating a scannable QR code locally…",
         "qr_success": "✅ QR code ready. Remaining balance: <b>{credits} credits</b>.",
@@ -168,7 +164,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "qr_invalid": "Send non-empty text or a URL. No credit was charged.",
         "qr_only_text": "Please send text or a URL, not a file.",
         "meme_choose_template": (
-            "Choose a local meme template. The result costs {cost} credit."
+            "Choose a local meme template. The result costs {cost} credits."
         ),
         "meme_top_prompt": (
             "Send the top text (up to {max_characters} characters), or send - to leave it empty."
@@ -181,14 +177,14 @@ TEXTS: dict[str, dict[str, str]] = {
         "meme_processing": "⏳ Creating the meme locally…",
         "meme_success": "✅ Meme ready. Remaining balance: <b>{credits} credits</b>.",
         "meme_only_text": "Please send text. Use - if this line should be empty.",
-        "pixel_choose_level": "Choose the pixel size. The result costs {cost} credit.",
+        "pixel_choose_level": "Choose the pixel size. The result costs {cost} credits.",
         "pixel_image_prompt": (
             "Send a JPEG, PNG, WebP, or HEIC image up to {max_mb} MB."
         ),
         "pixel_processing": "⏳ Creating your pixel avatar locally…",
         "pixel_success": "✅ Pixel avatar ready. Remaining balance: <b>{credits} credits</b>.",
         "passport_choose_background": (
-            "Choose a background color. The result costs {cost} credit."
+            "Choose a background color. The result costs {cost} credits."
         ),
         "passport_image_prompt": (
             "Send a clear, front-facing JPEG, PNG, WebP, or HEIC portrait up to {max_mb} MB.\n\n"
@@ -202,7 +198,7 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "sticker_image_prompt": (
             "Send a JPEG, PNG, WebP, or HEIC image up to {max_mb} MB. "
-            "I will remove the background and add an outline. Cost: {cost} credit."
+            "I will remove the background and add an outline. Cost: {cost} credits."
         ),
         "sticker_processing": "⏳ Preparing a 512×512 Telegram-compatible sticker locally…",
         "sticker_success": (
@@ -277,17 +273,17 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "credits_insufficient": (
             "Недостаточно кредитов. Ваш баланс: <b>{balance}</b>; "
-            "стоимость функции: <b>{cost}</b>."
+            "стоимость функции: <b>{cost} кредитов</b>."
         ),
         "history_empty": "У вас пока нет созданных работ. Начните с /create 🎨",
         "history_header": "<b>Ваши последние работы</b>\n\n{items}",
         "history_item": (
-            "{index}. {feature}\n✅ Готово · {credits} кредит\n{date}"
+            "{index}. {feature}\n✅ Готово · Списано кредитов: {credits}\n{date}"
         ),
         "feature_background_removal": "✂️ Удаление фона",
         "background_prompt": (
             "Отправьте изображение JPEG, PNG, WebP или HEIC размером до {max_mb} МБ. "
-            "Стоимость — {cost} кредит; он спишется только после успешной обработки."
+            "Стоимость — {cost} кредитов; они спишутся только после успешной обработки."
         ),
         "background_only_images": "Отправьте изображение, а не текст или другой файл.",
         "background_unsupported_format": (
@@ -299,9 +295,6 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "background_success": (
             "✅ Фон удалён. Осталось: <b>{credits} кредитов</b>."
-        ),
-        "background_insufficient": (
-            "Недостаточно кредитов. Для удаления фона нужен 1 кредит."
         ),
         "background_timeout": (
             "Локальная обработка заняла слишком много времени. Кредит не списан. "
@@ -360,7 +353,6 @@ TEXTS: dict[str, dict[str, str]] = {
             "Оплата отменена или не завершена. Кредиты не зачислены."
         ),
         "payment_not_pending": "Этот счёт больше не ожидает оплаты.",
-        "local_insufficient": "Недостаточно кредитов. Для этой операции нужен 1 кредит.",
         "local_invalid": "Этот вариант недоступен.",
         "local_unsupported_format": (
             "Формат не поддерживается. Отправьте изображение JPEG, PNG, WebP или HEIC."
@@ -382,7 +374,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "local_only_images": "Отправьте изображение, а не текст или другой файл.",
         "qr_prompt": (
             "Отправьте текст или URL для кодирования (до {max_characters} символов). "
-            "QR-код стоит {cost} кредит."
+            "QR-код стоит {cost} кредитов."
         ),
         "qr_processing": "⏳ Создаю сканируемый QR-код локально…",
         "qr_success": "✅ QR-код готов. Осталось: <b>{credits} кредитов</b>.",
@@ -390,7 +382,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "qr_invalid": "Отправьте непустой текст или URL. Кредит не списан.",
         "qr_only_text": "Отправьте текст или URL, а не файл.",
         "meme_choose_template": (
-            "Выберите локальный шаблон мема. Результат стоит {cost} кредит."
+            "Выберите локальный шаблон мема. Результат стоит {cost} кредитов."
         ),
         "meme_top_prompt": (
             "Отправьте верхний текст (до {max_characters} символов) или - для пустой строки."
@@ -402,14 +394,14 @@ TEXTS: dict[str, dict[str, str]] = {
         "meme_processing": "⏳ Создаю мем локально…",
         "meme_success": "✅ Мем готов. Осталось: <b>{credits} кредитов</b>.",
         "meme_only_text": "Отправьте текст. Используйте -, если строка должна быть пустой.",
-        "pixel_choose_level": "Выберите размер пикселей. Результат стоит {cost} кредит.",
+        "pixel_choose_level": "Выберите размер пикселей. Результат стоит {cost} кредитов.",
         "pixel_image_prompt": (
             "Отправьте изображение JPEG, PNG, WebP или HEIC размером до {max_mb} МБ."
         ),
         "pixel_processing": "⏳ Создаю пиксельный аватар локально…",
         "pixel_success": "✅ Пиксельный аватар готов. Осталось: <b>{credits} кредитов</b>.",
         "passport_choose_background": (
-            "Выберите цвет фона. Результат стоит {cost} кредит."
+            "Выберите цвет фона. Результат стоит {cost} кредитов."
         ),
         "passport_image_prompt": (
             "Отправьте чёткий анфас-портрет JPEG, PNG, WebP или HEIC размером до {max_mb} МБ.\n\n"
@@ -423,7 +415,7 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "sticker_image_prompt": (
             "Отправьте изображение JPEG, PNG, WebP или HEIC размером до {max_mb} МБ. "
-            "Я удалю фон и добавлю обводку. Стоимость: {cost} кредит."
+            "Я удалю фон и добавлю обводку. Стоимость: {cost} кредитов."
         ),
         "sticker_processing": "⏳ Готовлю локальный стикер 512×512 для Telegram…",
         "sticker_success": "✅ Файл стикера готов. Осталось: <b>{credits} кредитов</b>.",
