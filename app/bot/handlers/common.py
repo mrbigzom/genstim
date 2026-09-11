@@ -25,6 +25,7 @@ from app.services.user import UserService
 
 logger = logging.getLogger(__name__)
 router = Router(name="common")
+navigation_router = Router(name="navigation")
 
 PRIVACY_URL = "https://github.com/mrbigzom/genstim/blob/main/PRIVACY.md"
 TERMS_URL = "https://github.com/mrbigzom/genstim/blob/main/TERMS.md"
@@ -66,12 +67,17 @@ async def help_command(message: Message, session: AsyncSession) -> None:
     await message.answer(get_text(user.language, "help"), reply_markup=main_menu(user.language))
 
 
-@router.message(Command("create"))
-@router.message(F.text.in_(button_texts("create")))
-async def create_command(message: Message, session: AsyncSession) -> None:
+@navigation_router.message(Command("create"))
+@navigation_router.message(F.text.in_(button_texts("create")))
+async def create_command(
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
     if message.from_user is None:
         return
     user = await ensure_user(message.from_user, session)
+    await state.clear()
     await message.answer(get_text(user.language, "create"), reply_markup=create_menu(user.language))
 
 
