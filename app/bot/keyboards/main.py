@@ -26,7 +26,7 @@ def main_menu(language: str) -> ReplyKeyboardMarkup:
     labels = MENU_BUTTONS[language if language in MENU_BUTTONS else "en"]
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=labels["create"]), KeyboardButton(text=labels["tools"])],
+            [KeyboardButton(text=labels["create"])],
             [KeyboardButton(text=labels["credits"]), KeyboardButton(text=labels["history"])],
             [KeyboardButton(text=labels["invite"]), KeyboardButton(text=labels["language"])],
             [KeyboardButton(text=labels["help"])],

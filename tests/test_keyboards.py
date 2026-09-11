@@ -8,7 +8,6 @@ def test_main_menu_contains_required_english_labels() -> None:
 
     assert labels == [
         "🎨 Create",
-        "🛠 AI Tools",
         "💎 Credits",
         "🖼 My Creations",
         "🎁 Invite Friends",
@@ -18,15 +17,22 @@ def test_main_menu_contains_required_english_labels() -> None:
 
 
 def test_main_menu_contains_required_russian_labels() -> None:
-    assert set(MENU_BUTTONS["ru"].values()) == {
+    keyboard = main_menu("ru")
+    labels = [button.text for row in keyboard.keyboard for button in row]
+
+    assert labels == [
         "🎨 Создать",
-        "🛠 AI-инструменты",
         "💎 Кредиты",
         "🖼 Мои работы",
         "🎁 Пригласить друзей",
         "🌐 Язык",
         "❓ Помощь",
-    }
+    ]
+
+
+def test_hidden_ai_tools_labels_are_kept_for_future_use() -> None:
+    assert MENU_BUTTONS["en"]["tools"] == "🛠 AI Tools"
+    assert MENU_BUTTONS["ru"]["tools"] == "🛠 AI-инструменты"
 
 
 def test_create_menu_exposes_only_working_cpu_tools() -> None:
