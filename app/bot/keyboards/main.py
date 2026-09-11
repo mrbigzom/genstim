@@ -28,7 +28,7 @@ def main_menu(language: str) -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text=labels["create"])],
             [KeyboardButton(text=labels["credits"])],
-            [KeyboardButton(text=labels["invite"]), KeyboardButton(text=labels["language"])],
+            [KeyboardButton(text=labels["language"])],
             [KeyboardButton(text=labels["help"])],
         ],
         resize_keyboard=True,
