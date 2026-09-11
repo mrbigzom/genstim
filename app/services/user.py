@@ -7,6 +7,7 @@ from app.repositories.user import UserRepository
 
 SUPPORTED_LANGUAGES = {"en", "ru"}
 DEFAULT_CREDITS = 3
+MAX_ADMIN_CREDIT_TOP_UP = 10_000
 
 
 def detect_language(language_code: str | None) -> str:
@@ -51,6 +52,16 @@ class UserService:
         if language not in SUPPORTED_LANGUAGES:
             raise ValueError(f"Unsupported language: {language}")
         user.language = language
+        await self.repository.session.flush()
+        return user
+
+    async def add_credits(self, *, telegram_id: int, amount: int) -> User | None:
+        if amount <= 0 or amount > MAX_ADMIN_CREDIT_TOP_UP:
+            raise ValueError("Credit amount is outside the allowed range")
+        user = await self.repository.get_by_telegram_id_for_update(telegram_id)
+        if user is None:
+            return None
+        user.credits += amount
         await self.repository.session.flush()
         return user
 

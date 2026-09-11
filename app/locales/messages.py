@@ -54,6 +54,20 @@ TEXTS: dict[str, dict[str, str]] = {
             "Not enough credits. Your balance is <b>{balance}</b>; "
             "this function costs <b>{cost} credits</b>."
         ),
+        "admin_credit_unauthorized": "This command is available only to the administrator.",
+        "admin_credit_usage": "Usage: /addcredits &lt;telegram_user_id&gt; &lt;amount&gt;",
+        "admin_credit_invalid_amount": (
+            "Amount must be a whole number from 1 to {maximum}."
+        ),
+        "admin_credit_user_not_found": (
+            "User with Telegram ID {telegram_user_id} was not found."
+        ),
+        "admin_credit_success": (
+            "Credits added successfully.\n"
+            "Telegram user ID: <code>{telegram_user_id}</code>\n"
+            "Added: <b>{amount}</b>\n"
+            "New balance: <b>{balance} credits</b>"
+        ),
         "history_empty": "You do not have any creations yet. Start with /create 🎨",
         "history_header": "<b>Your recent creations</b>\n\n{items}",
         "history_item": (
@@ -274,6 +288,20 @@ TEXTS: dict[str, dict[str, str]] = {
         "credits_insufficient": (
             "Недостаточно кредитов. Ваш баланс: <b>{balance}</b>; "
             "стоимость функции: <b>{cost} кредитов</b>."
+        ),
+        "admin_credit_unauthorized": "Эта команда доступна только администратору.",
+        "admin_credit_usage": "Использование: /addcredits &lt;telegram_user_id&gt; &lt;amount&gt;",
+        "admin_credit_invalid_amount": (
+            "Количество должно быть целым числом от 1 до {maximum}."
+        ),
+        "admin_credit_user_not_found": (
+            "Пользователь с Telegram ID {telegram_user_id} не найден."
+        ),
+        "admin_credit_success": (
+            "Кредиты успешно начислены.\n"
+            "Telegram user ID: <code>{telegram_user_id}</code>\n"
+            "Начислено: <b>{amount}</b>\n"
+            "Новый баланс: <b>{balance} кредитов</b>"
         ),
         "history_empty": "У вас пока нет созданных работ. Начните с /create 🎨",
         "history_header": "<b>Ваши последние работы</b>\n\n{items}",

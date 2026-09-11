@@ -42,6 +42,7 @@ async def run() -> None:
     local_timeout = settings.background_removal_timeout_seconds
     dispatcher = create_dispatcher(
         session_factory,
+        admin_telegram_id=settings.admin_telegram_id,
         background_removal_provider=background_removal_provider,
         qr_code_provider=PillowQrCodeProvider(timeout_seconds=local_timeout),
         meme_provider=PillowMemeProvider(timeout_seconds=local_timeout),

@@ -14,6 +14,7 @@ from app.providers.sticker import StickerProvider
 def create_dispatcher(
     session_factory: async_sessionmaker[AsyncSession],
     *,
+    admin_telegram_id: int | None,
     background_removal_provider: BackgroundRemovalProvider,
     qr_code_provider: QrCodeProvider,
     meme_provider: MemeProvider,
@@ -24,6 +25,7 @@ def create_dispatcher(
     background_max_pixels: int,
 ) -> Dispatcher:
     dispatcher = Dispatcher(
+        admin_telegram_id=admin_telegram_id,
         background_removal_provider=background_removal_provider,
         qr_code_provider=qr_code_provider,
         meme_provider=meme_provider,

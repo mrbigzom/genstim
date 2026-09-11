@@ -11,6 +11,11 @@ class UserRepository:
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         return await self.session.scalar(select(User).where(User.telegram_id == telegram_id))
 
+    async def get_by_telegram_id_for_update(self, telegram_id: int) -> User | None:
+        return await self.session.scalar(
+            select(User).where(User.telegram_id == telegram_id).with_for_update()
+        )
+
     async def get_by_id_for_update(self, user_id: int) -> User | None:
         return await self.session.scalar(
             select(User).where(User.id == user_id).with_for_update()
