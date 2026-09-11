@@ -14,6 +14,10 @@ COMMANDS_EN = [
     BotCommand(command="paysupport", description="Payment support"),
     BotCommand(command="terms", description="Terms of Service"),
     BotCommand(command="privacy", description="Privacy Policy"),
+    BotCommand(command="leads", description="Review leads"),
+    BotCommand(command="leadstatus", description="Update lead status"),
+    BotCommand(command="leads", description="Проверить лиды"),
+    BotCommand(command="leadstatus", description="Изменить статус лида"),
 ]
 
 COMMANDS_RU = [

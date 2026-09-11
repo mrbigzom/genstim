@@ -4,7 +4,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
-from app.models import Generation, Payment, User  # noqa: F401
+from app.models import Generation, Lead, Payment, User  # noqa: F401
 
 
 @pytest_asyncio.fixture

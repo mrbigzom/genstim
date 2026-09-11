@@ -68,6 +68,25 @@ TEXTS: dict[str, dict[str, str]] = {
             "Added: <b>{amount}</b>\n"
             "New balance: <b>{balance} credits</b>"
         ),
+        "admin_leads_unauthorized": "This command is available only to the administrator.",
+        "admin_leads_usage": "Usage: /leads [niche]. Available niches: {niches}",
+        "admin_leads_empty": "No new leads found.",
+        "admin_leads_header": "<b>New leads</b>\n\n{items}",
+        "admin_lead_item": (
+            "<b>#{index} · {name}</b> (ID {lead_id})\n"
+            "Niche: {niche} · Score: <b>{score}/100</b>\n"
+            "Contact: {contact}\nURL: {url}\nFit: {reason}\n"
+            "Draft: {draft}"
+        ),
+        "admin_lead_status_usage": (
+            "Usage: /leadstatus <lead_id> <status>. Statuses: {statuses}"
+        ),
+        "admin_lead_not_found": "Lead {lead_id} was not found.",
+        "admin_lead_status_updated": "Lead {lead_id} status changed to <b>{status}</b>.",
+        "lead_outreach_template": (
+            "Hello {name}! I noticed your work in {niche}. "
+            "Would you like to try GenStim AI for your content?"
+        ),
         "history_empty": "You do not have any creations yet. Start with /create 🎨",
         "history_header": "<b>Your recent creations</b>\n\n{items}",
         "history_item": (
@@ -302,6 +321,25 @@ TEXTS: dict[str, dict[str, str]] = {
             "Telegram user ID: <code>{telegram_user_id}</code>\n"
             "Начислено: <b>{amount}</b>\n"
             "Новый баланс: <b>{balance} кредитов</b>"
+        ),
+        "admin_leads_unauthorized": "Эта команда доступна только администратору.",
+        "admin_leads_usage": "Использование: /leads [ниша]. Доступные ниши: {niches}",
+        "admin_leads_empty": "Новых лидов не найдено.",
+        "admin_leads_header": "<b>Новые лиды</b>\n\n{items}",
+        "admin_lead_item": (
+            "<b>#{index} · {name}</b> (ID {lead_id})\n"
+            "Ниша: {niche} · Оценка: <b>{score}/100</b>\n"
+            "Контакт: {contact}\nURL: {url}\nПочему подходит: {reason}\n"
+            "Черновик: {draft}"
+        ),
+        "admin_lead_status_usage": (
+            "Использование: /leadstatus <id_лида> <статус>. Статусы: {statuses}"
+        ),
+        "admin_lead_not_found": "Лид {lead_id} не найден.",
+        "admin_lead_status_updated": "Статус лида {lead_id} изменён на <b>{status}</b>.",
+        "lead_outreach_template": (
+            "Здравствуйте, {name}! Я заметил вашу работу в сфере «{niche}». "
+            "Хотите попробовать GenStim AI для создания контента?"
         ),
         "history_empty": "У вас пока нет созданных работ. Начните с /create 🎨",
         "history_header": "<b>Ваши последние работы</b>\n\n{items}",
