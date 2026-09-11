@@ -9,7 +9,6 @@ def test_main_menu_contains_required_english_labels() -> None:
     assert labels == [
         "🎨 Create",
         "💎 Credits",
-        "🖼 My Creations",
         "🎁 Invite Friends",
         "🌐 Language",
         "❓ Help",
@@ -23,16 +22,17 @@ def test_main_menu_contains_required_russian_labels() -> None:
     assert labels == [
         "🎨 Создать",
         "💎 Кредиты",
-        "🖼 Мои работы",
         "🎁 Пригласить друзей",
         "🌐 Язык",
         "❓ Помощь",
     ]
 
 
-def test_hidden_ai_tools_labels_are_kept_for_future_use() -> None:
+def test_hidden_main_menu_labels_are_kept_for_future_use() -> None:
     assert MENU_BUTTONS["en"]["tools"] == "🛠 AI Tools"
     assert MENU_BUTTONS["ru"]["tools"] == "🛠 AI-инструменты"
+    assert MENU_BUTTONS["en"]["history"] == "🖼 My Creations"
+    assert MENU_BUTTONS["ru"]["history"] == "🖼 Мои работы"
 
 
 def test_create_menu_exposes_only_working_cpu_tools() -> None:
