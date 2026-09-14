@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     background_removal_max_file_mb: int = 20
     background_removal_max_pixels: int = 25_000_000
     background_removal_max_concurrency: int = 1
+    lead_scheduler_interval_hours: float = 6.0
 
     @field_validator("bot_token")
     @classmethod
@@ -69,6 +70,13 @@ class Settings(BaseSettings):
     def validate_background_concurrency(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("BACKGROUND_REMOVAL_MAX_CONCURRENCY must be positive")
+        return value
+
+    @field_validator("lead_scheduler_interval_hours")
+    @classmethod
+    def validate_lead_scheduler_interval(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("LEAD_SCHEDULER_INTERVAL_HOURS must be positive")
         return value
 
 

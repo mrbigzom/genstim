@@ -12,6 +12,7 @@ from app.bot.dispatcher import create_dispatcher
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import create_database
+from app.lead_finder.scheduler import LeadScheduler, lead_finder_placeholder_job
 from app.providers.background_removal import RembgBackgroundRemovalProvider
 from app.providers.meme import PillowMemeProvider
 from app.providers.passport_photo import LocalPassportPhotoProvider
@@ -70,6 +71,10 @@ async def run() -> None:
             log_config=None,
         )
     )
+    lead_scheduler = LeadScheduler(
+        interval_seconds=settings.lead_scheduler_interval_hours * 60 * 60,
+        job=lead_finder_placeholder_job,
+    )
 
     tasks: set[asyncio.Task[object]] = set()
 
@@ -85,12 +90,14 @@ async def run() -> None:
             ),
             name="telegram-polling",
         )
-        tasks = {api_task, bot_task}
+        scheduler_task = lead_scheduler.start()
+        tasks = {api_task, bot_task, scheduler_task}
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
             task.result()
     finally:
         server.should_exit = True
+        await lead_scheduler.stop()
         for task in tasks:
             if not task.done():
                 task.cancel()

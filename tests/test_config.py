@@ -15,9 +15,20 @@ def test_settings_accept_empty_optional_admin_id() -> None:
     assert settings.admin_telegram_id is None
     assert settings.bot_token.get_secret_value() == "123456:test-token"
     assert settings.background_removal_max_pixels == 25_000_000
+    assert settings.lead_scheduler_interval_hours == 6.0
     assert "test-token" not in repr(settings)
 
 
 def test_settings_reject_empty_bot_token() -> None:
     with pytest.raises(ValidationError):
         Settings(bot_token="", database_url="sqlite+aiosqlite://", _env_file=None)
+
+
+def test_settings_reject_non_positive_scheduler_interval() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            bot_token="123456:test-token",
+            database_url="sqlite+aiosqlite://",
+            lead_scheduler_interval_hours=0,
+            _env_file=None,
+        )
