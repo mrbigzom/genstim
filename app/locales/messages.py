@@ -83,6 +83,34 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "admin_lead_not_found": "Lead {lead_id} was not found.",
         "admin_lead_status_updated": "Lead {lead_id} status changed to <b>{status}</b>.",
+        "admin_leadsource_unauthorized": (
+            "This command is available only to the administrator."
+        ),
+        "admin_leadsource_add_usage": "Usage: /leadsource_add &lt;public_http_url&gt;",
+        "admin_leadsource_remove_usage": "Usage: /leadsource_remove &lt;source_id&gt;",
+        "admin_leadsource_invalid": (
+            "Invalid source URL. Use a public HTTP or HTTPS URL; local and private "
+            "addresses are blocked."
+        ),
+        "admin_leadsource_duplicate": "This source URL is already enabled.",
+        "admin_leadsource_added": (
+            "Lead source added: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
+        "admin_leadsource_reenabled": (
+            "Lead source re-enabled: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
+        "admin_leadsource_empty": "No lead sources have been added.",
+        "admin_leadsource_header": "<b>Lead sources</b>\n\n{items}",
+        "admin_leadsource_item": (
+            "ID <b>{source_id}</b> · {status}\n<code>{url}</code>\nLast scanned: {last_scanned}"
+        ),
+        "admin_leadsource_enabled": "enabled",
+        "admin_leadsource_disabled": "disabled",
+        "admin_leadsource_never": "never",
+        "admin_leadsource_not_found": "Enabled lead source {source_id} was not found.",
+        "admin_leadsource_removed": (
+            "Lead source disabled: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
         "lead_outreach_template": (
             "Hello {name}! I noticed your work in {niche}. "
             "Would you like to try GenStim AI for your content?"
@@ -337,6 +365,35 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "admin_lead_not_found": "Лид {lead_id} не найден.",
         "admin_lead_status_updated": "Статус лида {lead_id} изменён на <b>{status}</b>.",
+        "admin_leadsource_unauthorized": "Эта команда доступна только администратору.",
+        "admin_leadsource_add_usage": (
+            "Использование: /leadsource_add &lt;публичный_http_url&gt;"
+        ),
+        "admin_leadsource_remove_usage": "Использование: /leadsource_remove &lt;id&gt;",
+        "admin_leadsource_invalid": (
+            "Некорректный URL источника. Используйте публичный HTTP или HTTPS URL; "
+            "локальные и приватные адреса запрещены."
+        ),
+        "admin_leadsource_duplicate": "Этот URL источника уже включён.",
+        "admin_leadsource_added": (
+            "Источник лидов добавлен: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
+        "admin_leadsource_reenabled": (
+            "Источник лидов снова включён: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
+        "admin_leadsource_empty": "Источники лидов ещё не добавлены.",
+        "admin_leadsource_header": "<b>Источники лидов</b>\n\n{items}",
+        "admin_leadsource_item": (
+            "ID <b>{source_id}</b> · {status}\n<code>{url}</code>\n"
+            "Последнее сканирование: {last_scanned}"
+        ),
+        "admin_leadsource_enabled": "включён",
+        "admin_leadsource_disabled": "отключён",
+        "admin_leadsource_never": "никогда",
+        "admin_leadsource_not_found": "Включённый источник {source_id} не найден.",
+        "admin_leadsource_removed": (
+            "Источник лидов отключён: ID <b>{source_id}</b> · <code>{url}</code>"
+        ),
         "lead_outreach_template": (
             "Здравствуйте, {name}! Я заметил вашу работу в сфере «{niche}». "
             "Хотите попробовать GenStim AI для создания контента?"

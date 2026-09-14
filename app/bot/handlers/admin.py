@@ -1,3 +1,5 @@
+from html import escape
+
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -7,6 +9,11 @@ from app.bot.handlers.utils import ensure_user
 from app.lead_finder import NICHE_LABELS, NICHES
 from app.lead_finder.service import LEAD_STATUSES, LeadFinderService
 from app.locales.messages import get_text
+from app.services.lead_source import (
+    DuplicateLeadSourceError,
+    InvalidLeadSourceURLError,
+    LeadSourceService,
+)
 from app.services.user import MAX_ADMIN_CREDIT_TOP_UP, UserService, detect_language
 
 router = Router(name="admin")
@@ -84,6 +91,122 @@ async def add_credits_command(
             balance=user.credits,
         )
     )
+
+
+@router.message(Command("leadsource_add"))
+async def lead_source_add_command(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    admin_telegram_id: int | None,
+) -> None:
+    if message.from_user is None:
+        return
+    fallback_language = detect_language(message.from_user.language_code)
+    if admin_telegram_id is None or message.from_user.id != admin_telegram_id:
+        await message.answer(get_text(fallback_language, "admin_leadsource_unauthorized"))
+        return
+
+    admin = await ensure_user(message.from_user, session)
+    raw_url = (command.args or "").strip()
+    if not raw_url:
+        await message.answer(get_text(admin.language, "admin_leadsource_add_usage"))
+        return
+    try:
+        source, created = await LeadSourceService(session).add(raw_url)
+    except DuplicateLeadSourceError:
+        await message.answer(get_text(admin.language, "admin_leadsource_duplicate"))
+        return
+    except InvalidLeadSourceURLError:
+        await message.answer(get_text(admin.language, "admin_leadsource_invalid"))
+        return
+
+    key = "admin_leadsource_added" if created else "admin_leadsource_reenabled"
+    await message.answer(
+        get_text(admin.language, key, source_id=source.id, url=escape(source.url))
+    )
+
+
+@router.message(Command("leadsource_list"))
+async def lead_source_list_command(
+    message: Message,
+    session: AsyncSession,
+    admin_telegram_id: int | None,
+) -> None:
+    if message.from_user is None:
+        return
+    fallback_language = detect_language(message.from_user.language_code)
+    if admin_telegram_id is None or message.from_user.id != admin_telegram_id:
+        await message.answer(get_text(fallback_language, "admin_leadsource_unauthorized"))
+        return
+
+    admin = await ensure_user(message.from_user, session)
+    sources = await LeadSourceService(session).list_all()
+    if not sources:
+        await message.answer(get_text(admin.language, "admin_leadsource_empty"))
+        return
+    items = [
+        get_text(
+            admin.language,
+            "admin_leadsource_item",
+            source_id=source.id,
+            url=escape(source.url),
+            status=get_text(
+                admin.language,
+                (
+                    "admin_leadsource_enabled"
+                    if source.enabled
+                    else "admin_leadsource_disabled"
+                ),
+            ),
+            last_scanned=(
+                source.last_scanned_at.isoformat(timespec="seconds")
+                if source.last_scanned_at is not None
+                else get_text(admin.language, "admin_leadsource_never")
+            ),
+        )
+        for source in sources
+    ]
+    await message.answer(
+        get_text(admin.language, "admin_leadsource_header", items="\n\n".join(items))
+    )
+
+
+@router.message(Command("leadsource_remove"))
+async def lead_source_remove_command(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    admin_telegram_id: int | None,
+) -> None:
+    if message.from_user is None:
+        return
+    fallback_language = detect_language(message.from_user.language_code)
+    if admin_telegram_id is None or message.from_user.id != admin_telegram_id:
+        await message.answer(get_text(fallback_language, "admin_leadsource_unauthorized"))
+        return
+
+    admin = await ensure_user(message.from_user, session)
+    try:
+        source_id = int((command.args or "").strip())
+    except ValueError:
+        await message.answer(get_text(admin.language, "admin_leadsource_remove_usage"))
+        return
+    source = await LeadSourceService(session).remove(source_id)
+    if source is None:
+        await message.answer(
+            get_text(admin.language, "admin_leadsource_not_found", source_id=source_id)
+        )
+        return
+    await message.answer(
+        get_text(
+            admin.language,
+            "admin_leadsource_removed",
+            source_id=source.id,
+            url=escape(source.url),
+        )
+    )
+
 
 @router.message(Command("leads"))
 async def leads_command(
