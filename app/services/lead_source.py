@@ -2,6 +2,7 @@ import asyncio
 import ipaddress
 import socket
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +68,13 @@ class LeadSourceService:
 
     async def list_all(self) -> list[LeadSource]:
         return await self.repository.list_all()
+
+    async def list_enabled(self) -> list[LeadSource]:
+        return await self.repository.list_enabled()
+
+    async def mark_scanned(self, source: LeadSource) -> None:
+        source.last_scanned_at = datetime.now(UTC)
+        await self.repository.session.flush()
 
     async def remove(self, source_id: int) -> LeadSource | None:
         if source_id <= 0:

@@ -28,3 +28,11 @@ class LeadSourceRepository:
             select(LeadSource).order_by(LeadSource.id)
         )
         return list(result)
+
+    async def list_enabled(self) -> list[LeadSource]:
+        result = await self.session.scalars(
+            select(LeadSource)
+            .where(LeadSource.enabled.is_(True))
+            .order_by(LeadSource.id)
+        )
+        return list(result)

@@ -28,7 +28,7 @@ class RobotsDeniedError(PublicWebsiteError):
 
 
 class PublicWebsiteScanner:
-    async def scan(self, *, url: str, niche: str) -> LeadCandidate:
+    async def scan(self, *, url: str, niche: str | None = None) -> LeadCandidate | None:
         normalized_url = await validate_public_url(url)
         timeout = aiohttp.ClientTimeout(total=15, connect=5, sock_read=10)
         async with aiohttp.ClientSession(

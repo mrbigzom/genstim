@@ -49,14 +49,17 @@ def extract_public_page(
     *,
     html: str,
     url: str,
-    niche: str,
+    niche: str | None,
     source: str = "website",
-) -> LeadCandidate:
-    if niche not in NICHES:
-        raise ValueError(f"Unsupported lead niche: {niche}")
+) -> LeadCandidate | None:
     parser = PublicPageParser()
     parser.feed(html)
     visible_text = " ".join(parser.text_parts)
+    niche = niche or infer_niche(visible_text)
+    if niche is None:
+        return None
+    if niche not in NICHES:
+        raise ValueError(f"Unsupported lead niche: {niche}")
     name = (parser.meta_title or parser.title or urlsplit(url).hostname or "Public page").strip()
     contact = _extract_public_contact(parser.links, visible_text, url)
     score, reason_fit = score_public_lead(

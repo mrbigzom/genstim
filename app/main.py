@@ -12,7 +12,7 @@ from app.bot.dispatcher import create_dispatcher
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import create_database
-from app.lead_finder.scheduler import LeadScheduler, lead_finder_placeholder_job
+from app.lead_finder.scheduler import LeadScheduler, create_lead_scan_job
 from app.providers.background_removal import RembgBackgroundRemovalProvider
 from app.providers.meme import PillowMemeProvider
 from app.providers.passport_photo import LocalPassportPhotoProvider
@@ -73,7 +73,7 @@ async def run() -> None:
     )
     lead_scheduler = LeadScheduler(
         interval_seconds=settings.lead_scheduler_interval_hours * 60 * 60,
-        job=lead_finder_placeholder_job,
+        job=create_lead_scan_job(session_factory),
     )
 
     tasks: set[asyncio.Task[object]] = set()
