@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.lead_finder.service import LeadFinderService
-from app.lead_finder.web import PublicWebsiteError, PublicWebsiteScanner
+from app.lead_finder.web import PublicWebsiteScanner
 from app.services.lead_source import LeadSourceService
 
 logger = logging.getLogger(__name__)
@@ -23,18 +23,23 @@ async def scan_enabled_lead_sources(
     logger.info("Lead Finder scheduled scan started source_count=%s", len(sources))
 
     for source in sources:
+        source_id = source.id
+        source_url = source.url
         try:
-            candidate = await scanner.scan(url=source.url)
-        except PublicWebsiteError as exc:
-            logger.warning(
-                "Lead source scan skipped source_id=%s error_type=%s",
-                source.id,
-                type(exc).__name__,
+            async with session.begin_nested():
+                candidate = await scanner.scan(url=source_url)
+                if candidate is not None:
+                    await lead_service.save_candidate(candidate)
+                await source_service.mark_scanned(source)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception(
+                "Lead source scan failed source_id=%s source_url=%s",
+                source_id,
+                source_url,
             )
             continue
-        await source_service.mark_scanned(source)
-        if candidate is not None:
-            await lead_service.save_candidate(candidate)
 
     logger.info("Lead Finder scheduled scan completed source_count=%s", len(sources))
 
